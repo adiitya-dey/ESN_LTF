@@ -162,3 +162,11 @@ cython_debug/
 #.idea/
 
 dataset/
+
+test_results/
+
+checkpoints/
+
+result.txt
+
+results/

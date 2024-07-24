@@ -39,8 +39,15 @@ parser.add_argument('--seg_len', type=int, default=48, help='segment length')
 parser.add_argument('--win_len', type=int, default=48, help='windows length')
 parser.add_argument('--channel_id', type=int, default=1, help='Whether to enable channel position encoding')
 
+#ESN
+parser.add_argument('--window_len', type=int, default=12, help='window length')
+parser.add_argument('--reservoir_size', type=int, default=50, help='size of reservoir')
+parser.add_argument('--washout', type=int, default=1, help='washout period')
+
+
+
 # DLinear
-#parser.add_argument('--individual', action='store_true', default=False, help='DLinear: a linear layer for each variate(channel) individually')
+# parser.add_argument('--individual', action='store_true', default=False, help='DLinear: a linear layer for each variate(channel) individually')
 
 # PatchTST
 parser.add_argument('--fc_dropout', type=float, default=0.05, help='fully connected dropout')
