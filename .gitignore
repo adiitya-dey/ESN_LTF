@@ -170,3 +170,5 @@ checkpoints/
 result.txt
 
 results/
+
+.vscode/

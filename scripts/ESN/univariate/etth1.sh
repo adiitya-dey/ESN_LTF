@@ -23,7 +23,7 @@ model_id=$data'_'$seq_len'_'$pred_len
 # ETTh1, univariate results, pred_len= 24 48 96 192 336 720
 
 random_seed=2021
-for pred_len in 96 192 336 720
+for pred_len in 24 48 96 192 336 720
 do
   model_id=$data'_'$seq_len'_'$pred_len
   python -u run_longExp.py \
