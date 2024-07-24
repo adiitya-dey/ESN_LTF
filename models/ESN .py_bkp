@@ -56,10 +56,14 @@ class Model(nn.Module):
                             )
             
 
-            self.readout = nn.Linear(in_features=(self.input_seg - self.washout)*self.reservoir_size,
-                                    out_features=self.pred_seg*self.reservoir_size,
-                                    bias=True)
+            ## Readout Weights and Bias.
+            w_r = torch.empty(self.input_seg - self.washout, self.reservoir_size, self.pred_seg)
+            w_r = nn.init.constant_(w_r, 0.5)
+            self.readout_W = nn.Parameter(w_r, requires_grad=True)
 
+            w_b = torch.empty(self.pred_seg, self.reservoir_size)
+            w_b = nn.init.constant(w_b, 0.5)
+            self.readout_B = nn.Parameter(w_b, requires_grad=True)
 
             self.projection = nn.Linear(in_features=self.reservoir_size,
                                         out_features=self.window_len,
@@ -121,16 +125,10 @@ class Model(nn.Module):
             x = x[:, self.washout:, :]
             
 
-            ## Flattening of batch sequences.
-            ## Output x: [Batch, (Input Segment - Washout) * reservoir size)]
-            x = x.view(x.shape[0], -1)
-
             ## Trainable Prediction/Readout layer.
             ## Output x: [Batch, Pred Segment, reservoir size]
-            x = self.readout(x)
-
-            
-            x = x.reshape(x.shape[0], self.pred_seg, self.reservoir_size)
+            ## b: batch, s: input_segment - washout, r: reservoir size, p: pred_segment
+            x = torch.einsum('bsr, srp -> bpr', x, self.readout_W) + self.readout_B
 
             ## Trainable Projection Layer.
             ## output x: [Batch, Pred Length]
