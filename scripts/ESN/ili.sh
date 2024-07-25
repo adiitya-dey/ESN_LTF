@@ -7,64 +7,40 @@ if [ ! -d "./logs/LongForecasting" ]; then
     mkdir ./logs/LongForecasting
 fi
 seq_len=104
-model_name=DLinear
+model_name=ESN
+root_path_name=./dataset/
+data_path=national_illness.csv
+model_id_name=national_illness
+data=custom
+window_len=4 
+reservoir_size=25
+washout=4
+model_id='ILI_'$seq_len'_'$pred_len
 
-python -u run_longExp.py \
-  --is_training 1 \
-  --root_path ./dataset/ \
-  --data_path national_illness.csv \
-  --model_id national_illness_$seq_len'_'24 \
-  --model $model_name \
-  --data custom \
-  --features M \
-  --seq_len $seq_len \
-  --label_len 18 \
-  --pred_len 24 \
-  --enc_in 7 \
-  --des 'Exp' \
-  --itr 1 --batch_size 32 --learning_rate 0.01 >logs/LongForecasting/$model_name'_'ili_$seq_len'_'24.log
 
-python -u run_longExp.py \
-  --is_training 1 \
-  --root_path ./dataset/ \
-  --data_path national_illness.csv \
-  --model_id national_illness_$seq_len'_'36 \
-  --model $model_name \
-  --data custom \
-  --features M \
-  --seq_len $seq_len \
-  --label_len 18 \
-  --pred_len 36 \
-  --enc_in 7 \
-  --des 'Exp' \
-  --itr 1 --batch_size 32 --learning_rate 0.01  >logs/LongForecasting/$model_name'_'ili_$seq_len'_'36.log
 
-python -u run_longExp.py \
-  --is_training 1 \
-  --root_path ./dataset/ \
-  --data_path national_illness.csv \
-  --model_id national_illness_$seq_len'_'48 \
-  --model $model_name \
-  --data custom \
-  --features M \
-  --seq_len $seq_len \
-  --label_len 18 \
-  --pred_len 48 \
-  --enc_in 7 \
-  --des 'Exp' \
-  --itr 1 --batch_size 32 --learning_rate 0.01  >logs/LongForecasting/$model_name'_'ili_$seq_len'_'48.log
-
-python -u run_longExp.py \
-  --is_training 1 \
-  --root_path ./dataset/ \
-  --data_path national_illness.csv \
-  --model_id national_illness_$seq_len'_'60 \
-  --model $model_name \
-  --data custom \
-  --features M \
-  --seq_len $seq_len \
-  --label_len 18 \
-  --pred_len 60 \
-  --enc_in 7 \
-  --des 'Exp' \
-  --itr 1 --batch_size 32 --learning_rate 0.01  >logs/LongForecasting/$model_name'_'ili_$seq_len'_'60.log
+random_seed=2021
+for pred_len in 24 36 48 60
+do
+    model_id=$data'_'$seq_len'_'$pred_len
+    python -u run_longExp.py \
+      --random_seed $random_seed \
+      --is_training 1 \
+      --root_path ./dataset/ \
+      --data_path $data_path \
+      --model_id $model_id \
+      --model $model_name \
+      --data $data \
+      --features M \
+      --seq_len $seq_len \
+      --pred_len $pred_len \
+      --window_len $window_len \
+      --reservoir_size $reservoir_size \
+      --washout $washout \
+      --enc_in 7 \
+      --individual 1 \
+      --des 'Exp' \
+      --train_epochs 30\
+      --loss 'mse' \
+      --itr 1 --batch_size 16 --learning_rate 0.01 >logs/LongForecasting/$model_name'_'$model_id_name'_'$seq_len'_'$pred_len.log 
+done
