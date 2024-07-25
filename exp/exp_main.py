@@ -385,3 +385,17 @@ class Exp_Main(Exp_Basic):
         np.save(folder_path + 'real_prediction.npy', preds)
 
         return
+    
+    def calc_params(self, setting):
+        # Calculate the number of trainable and non-trainable parameters
+        trainable_params = sum(p.numel() for p in self.model.parameters() if p.requires_grad)
+        non_trainable_params = sum(p.numel() for p in self.model.parameters() if not p.requires_grad)
+
+        print(f"Non_trainable: {non_trainable_params} Trainable:{trainable_params}")
+        f = open("parameters.txt", 'a')
+        f.write(setting + "  \n")
+        f.write('Trainable Params:{}, Non-Trainable Params:{}, Total Params:{}'.format(trainable_params, non_trainable_params, trainable_params + non_trainable_params))
+        f.write('\n')
+        f.write('\n')
+        f.close()
+

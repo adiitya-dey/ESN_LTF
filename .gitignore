@@ -169,6 +169,8 @@ checkpoints/
 
 result.txt
 
+parameters.txt
+
 results/
 
 .vscode/

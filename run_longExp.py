@@ -150,6 +150,7 @@ if args.is_training:
 
         print('>>>>>>>testing : {}<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<'.format(setting))
         exp.test(setting)
+        exp.calc_params(setting)
 
         if args.do_predict:
             print('>>>>>>>predicting : {}<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<'.format(setting))
@@ -176,4 +177,5 @@ else:
     exp = Exp(args)  # set experiments
     print('>>>>>>>testing : {}<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<'.format(setting))
     exp.test(setting, test=1)
+    exp.calc_params(setting)
     torch.cuda.empty_cache()
