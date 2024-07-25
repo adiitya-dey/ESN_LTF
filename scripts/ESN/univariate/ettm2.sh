@@ -26,6 +26,7 @@ model_id=$data'_'$seq_len'_'$pred_len
 random_seed=2021
 for pred_len in 24 48 96 192 336 720
 do
+  model_id=$data'_'$seq_len'_'$pred_len
   python -u run_longExp.py \
     --random_seed $random_seed \
     --is_training 1 \
