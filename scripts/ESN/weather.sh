@@ -6,61 +6,41 @@ fi
 if [ ! -d "./logs/LongForecasting" ]; then
     mkdir ./logs/LongForecasting
 fi
-seq_len=336
-model_name=DLinear
+seq_len=512
+model_name=ESN
+root_path_name=./dataset/
+data_path=weather.csv
+model_id_name=weather
+data=custom
+window_len=32
+reservoir_size=25
+washout=12
+model_id='weather_'$model_name'_'$seq_len'_'$pred_len
 
-python -u run_longExp.py \
-  --is_training 1 \
-  --root_path ./dataset/ \
-  --data_path weather.csv \
-  --model_id weather_$seq_len'_'96 \
-  --model $model_name \
-  --data custom \
-  --features M \
-  --seq_len $seq_len \
-  --pred_len 96 \
-  --enc_in 21 \
-  --des 'Exp' \
-  --itr 1 --batch_size 16  >logs/LongForecasting/$model_name'_'Weather_$seq_len'_'96.log
 
-python -u run_longExp.py \
-  --is_training 1 \
-  --root_path ./dataset/ \
-  --data_path weather.csv \
-  --model_id weather_$seq_len'_'192 \
-  --model $model_name \
-  --data custom \
-  --features M \
-  --seq_len $seq_len \
-  --pred_len 192 \
-  --enc_in 21 \
-  --des 'Exp' \
-  --itr 1 --batch_size 16  >logs/LongForecasting/$model_name'_'Weather_$seq_len'_'192.log
 
-python -u run_longExp.py \
-  --is_training 1 \
-  --root_path ./dataset/ \
-  --data_path weather.csv \
-  --model_id weather_$seq_len'_'336 \
-  --model $model_name \
-  --data custom \
-  --features M \
-  --seq_len $seq_len \
-  --pred_len 336 \
-  --enc_in 21 \
-  --des 'Exp' \
-  --itr 1 --batch_size 16  >logs/LongForecasting/$model_name'_'Weather_$seq_len'_'336.log
-
-python -u run_longExp.py \
-  --is_training 1 \
-  --root_path ./dataset/ \
-  --data_path weather.csv \
-  --model_id weather_$seq_len'_'720 \
-  --model $model_name \
-  --data custom \
-  --features M \
-  --seq_len $seq_len \
-  --pred_len 720 \
-  --enc_in 21 \
-  --des 'Exp' \
-  --itr 1 --batch_size 16  >logs/LongForecasting/$model_name'_'Weather_$seq_len'_'720.log
+random_seed=2021
+for pred_len in 24 48 96 192 336 720
+do
+    model_id=$data'_'$seq_len'_'$pred_len
+    python -u run_longExp.py \
+      --random_seed $random_seed \
+      --is_training 1 \
+      --root_path ./dataset/ \
+      --data_path $data_path \
+      --model_id $model_id \
+      --model $model_name \
+      --data $data \
+      --features M \
+      --seq_len $seq_len \
+      --pred_len $pred_len \
+      --window_len $window_len \
+      --reservoir_size $reservoir_size \
+      --washout $washout \
+      --enc_in 7 \
+      --individual 1 \
+      --des 'Exp' \
+      --train_epochs 30\
+      --loss 'mse' \
+      --itr 1 --batch_size 16 --learning_rate 0.01 >logs/LongForecasting/$model_name'_'$model_id_name'_'$seq_len'_'$pred_len.log 
+done
