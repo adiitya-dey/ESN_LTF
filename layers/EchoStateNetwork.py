@@ -19,7 +19,7 @@ class ESN(nn.Module):
         self.activation = activation
         
         # Initalize Leaking reate as trainable parameter.
-        self.leaking_rate = nn.Parameter(torch.tensor([0.5]), requires_grad=True)
+        # self.leaking_rate = nn.Parameter(torch.tensor([0.5]), requires_grad=True)
 
 
         ## Non-Trainable Input projections will perform B . u(t).
@@ -56,7 +56,10 @@ class ESN(nn.Module):
         
         new_state = self.state_projection(state)
         new_state = self.activation(new_state + input)
-        new_state = torch.mul(self.leaking_rate, state) + torch.mul((1 - self.leaking_rate), new_state)
+        similarity = nn.CosineSimilarity(dim=1)(new_state, state).unsqueeze(1)
+        leaking_rate = F.tanh(similarity)
+        # new_state = self.leaking_rate * state +(1 - self.leaking_rate) * new_state
+        new_state = leaking_rate * state +(1 - leaking_rate) * new_state
         return new_state
 
 
@@ -68,11 +71,11 @@ class ESN(nn.Module):
         x = self.input_projection(x)
 
         ## all_states : [Batch, Input Segment +1, reservoir size, 1]
-        all_states = torch.zeros(x.shape[0], x.shape[1], self.reservoir_size)
+        all_states = torch.zeros(x.shape[0], x.shape[1] + 1, self.reservoir_size)
 
         ## Iterate through Input sequence wise.
-        for t in range(x.shape[1]):
-            all_states[:,t,:] = self.get_state(x[:,t,:], all_states[:, t, :].clone())
+        for t in range(1, x.shape[1]):
+            all_states[:,t,:] = self.get_state(x[:,t,:], all_states[:, t -1, :].clone())
         
         ## all_states : [Batch, Input Segment +1, reservoir size, 1]
-        return all_states
+        return all_states[:,1:,:]
