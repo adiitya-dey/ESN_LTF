@@ -20,7 +20,7 @@ model_id='weather_'$model_name'_'$seq_len'_'$pred_len
 
 
 random_seed=2021
-for pred_len in 24 48 96 192 336 720
+for pred_len in 96 192 336 720
 do
     model_id=$data'_'$seq_len'_'$pred_len
     python -u run_longExp.py \
