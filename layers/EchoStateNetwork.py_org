@@ -9,6 +9,8 @@ class ESN(nn.Module):
     def __init__(self, 
                  input_size: int,
                  reservoir_size = 50,
+                 connectivity_rate= 1.0,
+                 spectral_radius=1.0,
                  activation = nn.Tanh(),
                  *args, **kwargs) -> None:
 
@@ -17,6 +19,8 @@ class ESN(nn.Module):
         self.input_size = input_size
         self.reservoir_size = reservoir_size
         self.activation = activation
+        self.connectivity_rate = connectivity_rate
+        self.spectral_radius = spectral_radius
         
         # Initalize Leaking reate as trainable parameter.
         # self.leaking_rate = nn.Parameter(torch.tensor([0.5]), requires_grad=True)
@@ -42,11 +46,31 @@ class ESN(nn.Module):
                                           out_features=self.reservoir_size,
                                           bias = False)
         with torch.no_grad():
-            w_d =  torch.empty(self.reservoir_size)
-            d = nn.init.uniform_(w_d, a=-1.0, b=1.0)
-            self.state_projection.weight = nn.Parameter(torch.diag(d).to_sparse(), requires_grad=False)
+            w_res = self.simple_reservoir_matrix(self.reservoir_size, self.connectivity_rate, self.spectral_radius)
+            self.state_projection.weight = nn.Parameter(w_res, requires_grad=False)
         self.state_projection.weight.requires_grad_ = False
 
+
+    def simple_reservoir_matrix(self, size, connectivity_rate, spectral_radius):
+        ## Initializing Reservoir Weights according to "Re-visiting the echo state property"(2012)
+        ##
+        ## Initialize a random matrix and induce sparsity.
+        W_res = torch.rand((size, size))
+        W_res[torch.rand(*W_res.data.shape) > connectivity_rate] = 0
+
+        ## Scale the matrix based on user defined spectral radius.
+        current_spectral_radius = torch.max(torch.abs(torch.linalg.eigvals(W_res)))
+        W_res.data = W_res * (spectral_radius / current_spectral_radius)
+
+        ## Induce half of the weights as negative weights.
+        total_entries = size * size
+        num_negative_entries = total_entries//2
+        negative_indices = np.random.choice(total_entries, num_negative_entries, replace=False)
+        W_flat = W_res.flatten()
+        W_flat[negative_indices] *= -1
+        W_res = W_flat.reshape(*W_res.shape)
+
+        return W_res    
 
 
                      
