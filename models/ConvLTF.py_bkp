@@ -1,0 +1,143 @@
+import torch
+import torch.nn as nn
+import torch.nn.functional as F
+import numpy as np
+import math
+from layers.EchoStateNetwork import ESN
+
+
+class PositionalEmbedding(nn.Module):
+    def __init__(self, d_model, max_len=5000):
+        super(PositionalEmbedding, self).__init__()
+        # Compute the positional encodings once in log space.
+        pe = torch.zeros(max_len, d_model).float()
+        pe.require_grad = False
+
+        position = torch.arange(0, max_len).float().unsqueeze(1)
+        div_term = (torch.arange(0, d_model, 2).float() * -(math.log(10000.0) / d_model)).exp()
+
+        pe[:, 0::2] = torch.sin(position * div_term)
+        pe[:, 1::2] = torch.cos(position * div_term)
+
+        pe = pe.unsqueeze(0)
+        self.register_buffer('pe', pe)
+
+    def forward(self, x):
+        return  x + self.pe[:,:, :x.size(2)]
+
+class moving_avg(nn.Module):
+    """
+    Moving average block to highlight the trend of time series
+    """
+    def __init__(self, kernel_size, stride):
+        super(moving_avg, self).__init__()
+        self.kernel_size = kernel_size
+        self.avg = nn.AvgPool1d(kernel_size=kernel_size, stride=stride, padding=0)
+
+    def forward(self, x):
+        # padding on the both ends of time series
+        front = x[:, 0:1, :].repeat(1, (self.kernel_size - 1) // 2, 1)
+        end = x[:, -1:, :].repeat(1, (self.kernel_size - 1) // 2, 1)
+        x = torch.cat([front, x, end], dim=1)
+        x = self.avg(x.permute(0, 2, 1))
+        x = x.permute(0, 2, 1)
+        return x
+
+
+class series_decomp(nn.Module):
+    """
+    Series decomposition block
+    """
+    def __init__(self, kernel_size):
+        super(series_decomp, self).__init__()
+        self.moving_avg = moving_avg(kernel_size, stride=1)
+
+    def forward(self, x):
+        moving_mean = self.moving_avg(x)
+        res = x - moving_mean
+        return res, moving_mean
+
+class FFN(nn.Module):
+    def __init__(self, input_size, hidden_size, output_size):
+        super(FFN, self).__init__()
+        self.fc1 = nn.Linear(input_size, hidden_size, bias=False)  # Input layer to hidden layer
+        # self.relu = nn.Tanh()  # Activation function
+        self.fc2 = nn.Linear(hidden_size, output_size, bias=False)  # Hidden layer to output layer
+        # self.dropout = nn.Dropout(0.2) 
+
+    
+    def forward(self, x):
+        out = self.fc1(x)  # Linear transformation
+        # out = self.relu(out)  # Apply ReLU activation
+        out = self.fc2(out)  # Linear transformation
+        # out = self.dropout(out)
+        return out
+
+class Model(nn.Module):
+    """
+    DLinear
+    """
+    def __init__(self, configs):
+        super(Model, self).__init__()
+        self.seq_len = configs.seq_len
+        self.pred_len = configs.pred_len
+        self.window_len = 12
+        self.reservoir_size = 25
+        self.washout = 10
+        self.hidden_size=1
+
+
+        self.input_seg = self.seq_len // self.window_len
+        self.pred_seg = self.pred_len // self.window_len
+
+        self.individual = configs.individual
+        self.channels = configs.enc_in
+
+        
+        # Linear layer to reduce the sequence length from L to n
+        self.linear_in = nn.Linear(self.seq_len, self.input_seg)
+
+        self.rnn = nn.LSTM(input_size=self.input_seg, hidden_size=self.hidden_size, num_layers=1, bidirectional=True, batch_first=True)
+
+        # Linear layer to map RNN output to m points
+        self.linear_out = nn.Linear(self.hidden_size * 2, self.input_seg)  # *2 because bidirectional
+
+        # Linear layer to convert the final output to (b, c, H)
+        self.final_linear = nn.Linear(self.pred_seg * self.input_seg, self.pred_len)
+
+
+
+    ## x: [Batch, Input length, Channel]
+    def forward(self, x):
+       # x has shape (b, c, L)
+        x = x.permute(0,2,1)
+        batch_size, channels, _ = x.shape
+
+        # Step 1: Convert (b, c, L) to (b, c, n)
+        x = self.linear_in(x)  # Shape becomes (b, c, n)
+
+        # Initialize the output sequence container
+        outputs = []
+
+        # Initialize hidden state
+        h_0 = torch.zeros(2, batch_size, self.hidden_size).to(x.device)  # 2 for bidirectional
+        c_0 = torch.zeros(2, batch_size, self.hidden_size).to(x.device)
+
+        # Step 2 and 3: Predict m points recursively
+        for _ in range(self.pred_seg):
+            # Pass through the RNN layer
+            rnn_out, (h_0, c_0) = self.rnn(x, (h_0, c_0))  # rnn_out shape: (b, c, 2*hidden_size)
+            
+            # Pass through the output linear layer
+            x = self.linear_out(rnn_out)  # Shape becomes (b, c, n)
+            
+            # Store output
+            outputs.append(x)
+
+        # Concatenate outputs along the sequence length dimension
+        outputs = torch.cat(outputs, dim=-1)  # Shape becomes (b, c, m*n)
+
+        # Step 4: Convert to (b, c, H)
+        outputs = self.final_linear(outputs)  # Shape becomes (b, c, H)
+
+        return outputs.permute(0,2,1)

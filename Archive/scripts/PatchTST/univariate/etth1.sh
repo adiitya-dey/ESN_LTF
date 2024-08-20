@@ -19,7 +19,7 @@ model_id_name=ETTh1
 data_name=ETTh1
 
 random_seed=2021
-for pred_len in 96 192 336 720
+for pred_len in 24 48 96 192 336 720
 do
     python -u run_longExp.py \
       --random_seed $random_seed \
@@ -44,5 +44,5 @@ do
       --stride 8\
       --des 'Exp' \
       --train_epochs 100\
-      --itr 1 --batch_size 128 --learning_rate 0.0001 >logs/LongForecasting/univariate/$model_name'_fS_'$model_id_name'_'$seq_len'_'$pred_len.log 
+      --itr 1 --batch_size 32 --learning_rate 0.0001 >logs/LongForecasting/univariate/$model_name'_fS_'$model_id_name'_'$seq_len'_'$pred_len.log 
 done

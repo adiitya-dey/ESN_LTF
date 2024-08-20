@@ -3,9 +3,7 @@ import torch.nn as nn
 import torch.nn.functional as F
 import numpy as np
 from layers.EchoStateNetwork import ESN
-from layers.mixture_of_experts import MoE, HeirarchicalMoE
    
-
 class FFN(nn.Module):
     def __init__(self, input_size, hidden_size, output_size):
         super(FFN, self).__init__()
@@ -22,20 +20,17 @@ class FFN(nn.Module):
         # out = self.dropout(out)
         return out
 
-
-
-
 class Model(nn.Module):
     """
-    Echo State Network
+    DLinear
     """
     def __init__(self, configs):
         super(Model, self).__init__()
         self.seq_len = configs.seq_len
         self.pred_len = configs.pred_len
-        self.window_len = configs.window_len
-        self.reservoir_size = configs.reservoir_size
-        self.washout = configs.washout
+        self.window_len = 12
+        self.reservoir_size = 25
+        self.washout = 10
 
 
         self.input_seg = self.seq_len // self.window_len
@@ -56,10 +51,9 @@ class Model(nn.Module):
                                         )
                                     )
 
-                self.readout_layers.append(nn.Linear(in_features=(self.input_seg - self.washout)*self.reservoir_size,
-                                                    out_features=self.pred_seg*self.reservoir_size,
-                                                    bias=True
-                                                    )
+                self.readout_layers.append(FFN(input_size=self.input_seg - self.washout,
+                               hidden_size=32,
+                               output_size=self.pred_seg)
                                             )
 
                 self.projection_layers.append(nn.Linear(in_features=self.reservoir_size,
@@ -74,12 +68,11 @@ class Model(nn.Module):
                             input_size=self.window_len,
                             )
             
-            # self.readout = HeirarchicalMoE(dim=self.input_seg - self.washout,
-            #                                num_experts=(4,4),
-            #                                activation=nn.Identity)
-            
+            self.readout = FFN(input_size=self.input_seg - self.washout,
+                               hidden_size=32,
+                               output_size=self.pred_seg)
 
-            ## Readout Weights and Bias.
+            # ## Readout Weights and Bias.
             # w_r = torch.empty(self.input_seg - self.washout, self.reservoir_size, self.pred_seg)
             # w_r = nn.init.constant_(w_r, 0.5)
             # self.readout_W = nn.Parameter(w_r, requires_grad=True)
@@ -87,12 +80,7 @@ class Model(nn.Module):
             # w_b = torch.empty(self.pred_seg, self.reservoir_size)
             # w_b = nn.init.constant(w_b, 0.5)
             # self.readout_B = nn.Parameter(w_b, requires_grad=True)
-            self.readout_ffn = FFN(input_size=self.input_seg - self.washout,
-                               hidden_size=32,
-                               output_size=self.pred_seg)
 
-
-            ## Projection Layer.
             self.projection = nn.Linear(in_features=self.reservoir_size,
                                         out_features=self.window_len,
                                         bias=True)
@@ -117,11 +105,13 @@ class Model(nn.Module):
                 ## Output x: [Batch, (Input Segment - Washout), reservoir size]
                 output = output[:, self.washout:, :]
 
+                output = output.permute(0, 2, 1)
+
                 ## Trainable Prediction/Readout layer.
                 ## Output x: [Batch, Pred Segment, reservoir size]
                 output = self.readout_layers[i](output)
 
-                output = output.reshape(output.shape[0], self.pred_seg, self.reservoir_size)
+                output = output.permute(0, 2, 1)
 
                 ## Trainable Projection Layer.
                 ## output x: [Batch, Pred Length]
@@ -150,11 +140,9 @@ class Model(nn.Module):
             
             x = x.permute(0,2,1)
 
-            # x, _ = self.readout(x)
+            x = self.readout(x)
 
-            x = self.readout_ffn(x)
-            x = x.permute(0,2,1)
-
+            x = x.permute(0, 2, 1)
             ## Trainable Prediction/Readout layer.
             ## Output x: [Batch, Pred Segment, reservoir size]
             ## b: batch, s: input_segment - washout, r: reservoir size, p: pred_segment
@@ -163,7 +151,6 @@ class Model(nn.Module):
             ## Trainable Projection Layer.
             ## output x: [Batch, Pred Length]
             x = self.projection(x)
-
             x = x.reshape(x.shape[0], -1)
 
             # Add Channel to dimension.
