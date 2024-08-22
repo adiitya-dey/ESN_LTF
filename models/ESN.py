@@ -39,63 +39,102 @@ class Model(nn.Module):
         self.individual = configs.individual
         self.channels = configs.enc_in
 
+        # Linear Projection
+        self.conv_1x1 = nn.Conv1d(in_channels=self.channels,
+                                  out_channels=self.channels,
+                                  kernel_size=1,
+                                  stride=1)
         
-        self.esn = ESN(reservoir_size=self.reservoir_size,
-                        activation=nn.Tanh(),
-                        input_size=self.window_len,
-                        )
+        self.conv_wx1 = nn.Conv1d(in_channels=self.channels,
+                                  out_channels=self.channels,
+                                  kernel_size=self.window_len,
+                                  stride=1,
+                                  padding="same")
         
-        self.readout = FFN(input_size=self.input_seg - self.washout,
-                            hidden_size=32,
-                            output_size=self.pred_seg)
+        # Down-Sampling
+        self.conv_wxw = nn.Conv1d(in_channels=self.channels,
+                                  out_channels=self.channels,
+                                  kernel_size=self.window_len,
+                                  stride=self.window_len)
+        
 
-        # ## Readout Weights and Bias.
-        # w_r = torch.empty(self.input_seg - self.washout, self.reservoir_size, self.pred_seg)
-        # w_r = nn.init.constant_(w_r, 0.5)
-        # self.readout_W = nn.Parameter(w_r, requires_grad=True)
+        # self.conv1d = nn.Conv1d(in_channels=1, out_channels=1, kernel_size=1 + 2 * (self.window_len // 2),
+                                # stride=1, padding=self.window_len // 2, padding_mode="zeros", bias=False)
+        
+        # Per-channel ESN (no-mixing allowed)
+        self.esn_modules = nn.ModuleList()
+        self.out = nn.ModuleList()
+        self.projection = nn.ModuleList()
+        self.segmentor = nn.ModuleList()
 
-        # w_b = torch.empty(self.pred_seg, self.reservoir_size)
-        # w_b = nn.init.constant(w_b, 0.5)
-        # self.readout_B = nn.Parameter(w_b, requires_grad=True)
+        for i in range(self.channels):
+            self.esn_modules.append(ESN(reservoir_size=self.reservoir_size,
+                                        input_size=1,
+                                        activation=nn.Tanh(),
+                                        ))
+            
+            self.out.append(nn.Linear(in_features=self.input_seg, out_features=self.pred_seg, bias=False))
+            self.projection.append(nn.Linear(in_features=self.reservoir_size, out_features=1, bias=False))
+            self.segmentor.append(nn.Linear(in_features=self.window_len, out_features=1, bias=False))
 
-        self.projection = nn.Linear(in_features=self.reservoir_size,
-                                        out_features=self.window_len,
-                                        bias=True)
+        # Up-sampling
+        # self.Tconv_wxw = nn.ConvTranspose1d(in_channels=self.channels,
+        #                                     out_channels=self.channels,
+        #                                     kernel_size=self.window_len,
+                                            # stride=self.window_len)
+        
+        self.f_linear = nn.Linear(in_features=self.pred_seg,
+                                  out_features=self.pred_len)
+        
+        
+        
+            
+            
+        
             
     ## x: [Batch, Input length, Channel]
     def forward(self, x):
-        
-        batch_size = x.shape[0]
-        # normalization and permute     b,s,c -> b,c,s
+        batch, _, _ = x.shape
+
+        # Normalization
         seq_mean = torch.mean(x, dim=1).unsqueeze(1)
-        x = (x - seq_mean).permute(0, 2, 1)
-
-        # downsampling: b,c,s -> bc,n,w -> bc,w,n
-        x = x.reshape(-1, self.window_len, self.input_seg).permute(0, 2, 1)
-
+        x = x - seq_mean
         
-        ## Output x: [bc, Input Segment, reservoir size]
-        x = self.esn(x)
+        # Input x: [B, L, C]
+        # Output x: [B, C, L]
+        x = x.permute(0, 2, 1) 
 
-        ## Output x: [Batch, (Input Segment - Washout), reservoir size]
-        x = x[:, self.washout:, :]
+        ## Non-Linear projection
+        # x = self.conv_1x1(x)
         
-        x = x.permute(0,2,1)
 
-        x = self.readout(x)
+        # x = self.conv_wx1(x)
+        # x = F.tanh(x)
 
-        x = x.permute(0, 2, 1)
-        ## Trainable Prediction/Readout layer.
-        ## Output x: [Batch, Pred Segment, reservoir size]
-        ## b: batch, s: input_segment - washout, r: reservoir size, p: pred_segment
-        # x = torch.einsum('bsr, srp -> bpr', x, self.readout_W) + self.readout_B
+        ## Downsampling
+        # x = self.conv_wxw(x) # x: (B, C, N)
 
-        ## Trainable Projection Layer.
-        ## output x: [Batch, Pred Length]
-        x = self.projection(x)
-        x = x.reshape(batch_size, self.channels, self.pred_len)
+        # 1D convolution aggregation
+        # x = self.conv1d(x.reshape(-1, 1, self.seq_len)).reshape(-1, self.channels, self.seq_len) + x
 
-         # permute and denorm
-        x = x.permute(0, 2, 1) + seq_mean
+        out = torch.zeros(x.shape[0], self.channels, self.pred_seg)
+        for i in range(self.channels):
+            segment = self.segmentor[i](x[:,i,:].reshape(-1, self.input_seg, self.window_len))
+            states = self.esn_modules[i](segment.squeeze(-1)) # x: (B, N, r)
+            states = self.out[i](states.permute(0, 2, 1)) # x: (B, M, r)
+            out[:,i,:] = self.projection[i](states.permute(0,2,1)).squeeze(-1)
 
-        return x
+        y = out # x: (B ,C, M)
+
+        # ## Upsampling
+        # y = self.Tconv_wxw(y) #: (B, C, H)
+
+        # x = self.conv_wx1(x)
+        # y = self.conv_1x1(x)
+        y = self.f_linear(y)
+
+
+        y = y.permute(0,2,1) + seq_mean
+      
+
+        return y
