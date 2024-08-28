@@ -104,34 +104,31 @@ class Model(nn.Module):
         # Output x: [B, C, L]
         x = x.permute(0, 2, 1) 
 
-        ## Non-Linear projection
-        # x = self.conv_1x1(x)
         
-
-        # x = self.conv_wx1(x)
-        # x = F.tanh(x)
-
-        ## Downsampling
-        # x = self.conv_wxw(x) # x: (B, C, N)
-
-        # 1D convolution aggregation
-        # x = self.conv1d(x.reshape(-1, 1, self.seq_len)).reshape(-1, self.channels, self.seq_len) + x
-
         out = torch.zeros(x.shape[0], self.channels, self.pred_seg)
         for i in range(self.channels):
+
+            # Input x: [B, L] -> [B, n, w]
+            # Output x: [B, n, 1]
             segment = self.segmentor[i](x[:,i,:].reshape(-1, self.input_seg, self.window_len))
+
+            # Input x: [B, n, 1] --> [B, n]
+            # Output x: [B, n, r]
             states = self.esn_modules[i](segment.squeeze(-1)) # x: (B, N, r)
+
+            # Input x: [B, n, r] --> [B, r, n]
+            # Output x: [B, r, m]
             states = self.out[i](states.permute(0, 2, 1)) # x: (B, M, r)
+
+            # Input x: [B, r, m] --> [B, m, r]
+            # Output x: [B, m ,1]
             out[:,i,:] = self.projection[i](states.permute(0,2,1)).squeeze(-1)
 
         y = out # x: (B ,C, M)
 
-        # ## Upsampling
-        # y = self.Tconv_wxw(y) #: (B, C, H)
 
-        # x = self.conv_wx1(x)
-        # y = self.conv_1x1(x)
-        y = self.f_linear(y)
+        
+        y = self.f_linear(y) # x: (B ,C, H)
 
 
         y = y.permute(0,2,1) + seq_mean
