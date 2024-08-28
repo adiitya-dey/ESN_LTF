@@ -10,7 +10,7 @@ model_id_name=ETTh1
 data_name=ETTh1
 
 seq_len=720
-for pred_len in 96 192 336 720
+for pred_len in 24 48 96 192
 do
   python -u run_longExp.py \
     --is_training 1 \

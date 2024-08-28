@@ -46,10 +46,11 @@ class ESN(nn.Module):
                                           out_features=self.reservoir_size,
                                           bias = False)
         with torch.no_grad():
-            w_d =  torch.empty(self.reservoir_size)
-            d = nn.init.uniform_(w_d, a=-1., b=1.)
-            self.state_projection.weight = nn.Parameter(torch.diag(d).to_sparse(), requires_grad=False)
-            # self.state_projection.weight = nn.Parameter(self.create_alpha_matrix(N=self.reservoir_size, alpha=.7), requires_grad = False)
+        #     w_d =  torch.empty(self.reservoir_size)
+        #     d = nn.init.uniform_(w_d, a=-1., b=1.)
+        #     self.state_projection.weight = nn.Parameter(torch.diag(d).to_sparse(), requires_grad=False)
+            # self.state_projection.weight = nn.Parameter(self.simple_reservoir_matrix(size=self.reservoir_size,connectivity_rate=1.0, spectral_radius=0.2).to_sparse(), requires_grad = False)
+            self.state_projection.weight = nn.Parameter(self.create_beta_matrix(N=self.reservoir_size, alpha=.7).to_sparse(), requires_grad = False)
         self.state_projection.weight.requires_grad_ = False
 
   
@@ -71,7 +72,7 @@ class ESN(nn.Module):
     ## x: [Batch, Segment]
     def forward(self, x):
         
-        x = torch.unsqueeze(x, -1)
+        # x = torch.unsqueeze(x, -1)
         ## x: [Batch, segment, reservoir size]
         x = self.input_projection(x)
 

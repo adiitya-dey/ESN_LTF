@@ -3,13 +3,34 @@ import torch.nn as nn
 import torch.nn.functional as F
 import numpy as np
 from layers.EchoStateNetwork import ESN
-   
+
+
+class PositionalEncoding(nn.Module):
+    def __init__(self, d_model, max_len=5000):
+        super(PositionalEncoding, self).__init__()
+
+        # Create a long enough positional encoding matrix
+        pe = torch.zeros(max_len, d_model)
+        position = torch.arange(0, max_len, dtype=torch.float).unsqueeze(1)
+        div_term = torch.exp(torch.arange(0, d_model, 2).float() * (-torch.log(torch.tensor(10000.0)) / d_model))
+
+        
+        pe[:, 0::2] = torch.sin(position * div_term)
+        pe[:, 1::2] = torch.cos(position * div_term)
+        
+        pe = pe.unsqueeze(0)  # Add a batch dimension
+        self.register_buffer('pe', pe)  # Save as a buffer, not a parameter
+
+    def forward(self, x):
+        x = x + self.pe[:, :x.size(1), :]
+        return x
+
 class FFN(nn.Module):
-    def __init__(self, input_size, hidden_size, output_size):
+    def __init__(self, in_features, hidden_size, out_features):
         super(FFN, self).__init__()
-        self.fc1 = nn.Linear(input_size, hidden_size)  # Input layer to hidden layer
+        self.fc1 = nn.Linear(in_features, hidden_size)  # Input layer to hidden layer
         # self.relu = nn.Tanh()  # Activation function
-        self.fc2 = nn.Linear(hidden_size, output_size)  # Hidden layer to output layer
+        self.fc2 = nn.Linear(hidden_size, out_features)  # Hidden layer to output layer
         # self.dropout = nn.Dropout(0.2) 
 
     # x: [batch, input_seg, reservoir size]
@@ -33,58 +54,37 @@ class Model(nn.Module):
         self.washout = 10
 
 
-        self.input_seg = self.seq_len // self.window_len
-        self.pred_seg = self.pred_len // self.window_len
+        self.input_seg = self.seq_len // self.window_len # n = L / w
+        self.pred_seg = self.pred_len  // self.window_len # m = H / w
 
         self.individual = configs.individual
         self.channels = configs.enc_in
-
-        # Linear Projection
-        self.conv_1x1 = nn.Conv1d(in_channels=self.channels,
-                                  out_channels=self.channels,
-                                  kernel_size=1,
-                                  stride=1)
-        
-        self.conv_wx1 = nn.Conv1d(in_channels=self.channels,
-                                  out_channels=self.channels,
-                                  kernel_size=self.window_len,
-                                  stride=1,
-                                  padding="same")
-        
-        # Down-Sampling
-        self.conv_wxw = nn.Conv1d(in_channels=self.channels,
-                                  out_channels=self.channels,
-                                  kernel_size=self.window_len,
-                                  stride=self.window_len)
-        
-
-        # self.conv1d = nn.Conv1d(in_channels=1, out_channels=1, kernel_size=1 + 2 * (self.window_len // 2),
-                                # stride=1, padding=self.window_len // 2, padding_mode="zeros", bias=False)
         
         # Per-channel ESN (no-mixing allowed)
-        self.esn_modules = nn.ModuleList()
-        self.out = nn.ModuleList()
-        self.projection = nn.ModuleList()
-        self.segmentor = nn.ModuleList()
+        self.projector = nn.ModuleList()
+        self.predictor = nn.ModuleList()
+        self.projector2 = nn.ModuleList()
+ 
+
+        self.pos = PositionalEncoding(d_model=4)
 
         for i in range(self.channels):
-            self.esn_modules.append(ESN(reservoir_size=self.reservoir_size,
-                                        input_size=1,
-                                        activation=nn.Tanh(),
-                                        ))
-            
-            self.out.append(nn.Linear(in_features=self.input_seg, out_features=self.pred_seg, bias=False))
-            self.projection.append(nn.Linear(in_features=self.reservoir_size, out_features=1, bias=False))
-            self.segmentor.append(nn.Linear(in_features=self.window_len, out_features=1, bias=False))
 
-        # Up-sampling
-        # self.Tconv_wxw = nn.ConvTranspose1d(in_channels=self.channels,
-        #                                     out_channels=self.channels,
-        #                                     kernel_size=self.window_len,
-                                            # stride=self.window_len)
+            self.projector.append(nn.Linear(in_features=1,
+                                            out_features=4,
+                                            bias=False))
+            
+            self.predictor.append(FFN(in_features=self.seq_len, 
+                                        out_features=self.pred_len, 
+                                        hidden_size=32))
+            
+            self.projector2.append(nn.Linear(in_features=4,
+                                            out_features=1,
+                                            bias=False))
+            
+          
         
-        self.f_linear = nn.Linear(in_features=self.pred_seg,
-                                  out_features=self.pred_len)
+
         
         
         
@@ -96,41 +96,30 @@ class Model(nn.Module):
     def forward(self, x):
         batch, _, _ = x.shape
 
-        # Normalization
-        seq_mean = torch.mean(x, dim=1).unsqueeze(1)
+        # Normalize
+        seq_mean = torch.mean(x, dim=1, keepdim=True)
         x = x - seq_mean
         
-        # Input x: [B, L, C]
-        # Output x: [B, C, L]
-        x = x.permute(0, 2, 1) 
+        
+    
 
         
-        out = torch.zeros(x.shape[0], self.channels, self.pred_seg)
+        y = torch.zeros(x.shape[0], self.channels, self.pred_len)
         for i in range(self.channels):
 
-            # Input x: [B, L] -> [B, n, w]
-            # Output x: [B, n, 1]
-            segment = self.segmentor[i](x[:,i,:].reshape(-1, self.input_seg, self.window_len))
+            # x: [B, L] -> [B, L, 1]
+            seg = self.projector[i](x[:,:, i].unsqueeze(-1))
 
-            # Input x: [B, n, 1] --> [B, n]
-            # Output x: [B, n, r]
-            states = self.esn_modules[i](segment.squeeze(-1)) # x: (B, N, r)
+            seg = self.pos(seg)
+            
+            seg = self.predictor[i](seg.permute(0,2,1)) 
 
-            # Input x: [B, n, r] --> [B, r, n]
-            # Output x: [B, r, m]
-            states = self.out[i](states.permute(0, 2, 1)) # x: (B, M, r)
-
-            # Input x: [B, r, m] --> [B, m, r]
-            # Output x: [B, m ,1]
-            out[:,i,:] = self.projection[i](states.permute(0,2,1)).squeeze(-1)
-
-        y = out # x: (B ,C, M)
+            seg = self.projector2[i](seg.permute(0,2,1))
+          
+            y[:,i,:] = seg.squeeze(-1)
 
 
-        
-        y = self.f_linear(y) # x: (B ,C, H)
-
-
+        # De-Normalize
         y = y.permute(0,2,1) + seq_mean
       
 
