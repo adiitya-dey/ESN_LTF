@@ -39,63 +39,121 @@ class Model(nn.Module):
         self.individual = configs.individual
         self.channels = configs.enc_in
 
+        if self.individual:
+            self.esn_layers = nn.ModuleList()
+            self.readout_layers = nn.ModuleList()
+            self.projection_layers = nn.ModuleList()
+
+            for i in range(self.channels):
+                self.esn_layers.append(ESN(reservoir_size=self.reservoir_size,
+                                        activation=nn.Tanh(),
+                                        input_size=self.window_len,
+                                        )
+                                    )
+
+                self.readout_layers.append(FFN(input_size=self.input_seg - self.washout,
+                               hidden_size=32,
+                               output_size=self.pred_seg)
+                                            )
+
+                self.projection_layers.append(nn.Linear(in_features=self.reservoir_size,
+                                                        out_features=self.window_len,
+                                                        bias=True
+                                                        )
+                                            )
+        else:
         
-        self.esn = ESN(reservoir_size=self.reservoir_size,
-                        activation=nn.Tanh(),
-                        input_size=self.window_len,
-                        )
-        
-        self.readout = FFN(input_size=self.input_seg - self.washout,
-                            hidden_size=32,
-                            output_size=self.pred_seg)
+            self.esn = ESN(reservoir_size=self.reservoir_size,
+                            activation=nn.Tanh(),
+                            input_size=self.window_len,
+                            )
+            
+            self.readout = FFN(input_size=self.input_seg - self.washout,
+                               hidden_size=32,
+                               output_size=self.pred_seg)
 
-        # ## Readout Weights and Bias.
-        # w_r = torch.empty(self.input_seg - self.washout, self.reservoir_size, self.pred_seg)
-        # w_r = nn.init.constant_(w_r, 0.5)
-        # self.readout_W = nn.Parameter(w_r, requires_grad=True)
+            # ## Readout Weights and Bias.
+            # w_r = torch.empty(self.input_seg - self.washout, self.reservoir_size, self.pred_seg)
+            # w_r = nn.init.constant_(w_r, 0.5)
+            # self.readout_W = nn.Parameter(w_r, requires_grad=True)
 
-        # w_b = torch.empty(self.pred_seg, self.reservoir_size)
-        # w_b = nn.init.constant(w_b, 0.5)
-        # self.readout_B = nn.Parameter(w_b, requires_grad=True)
+            # w_b = torch.empty(self.pred_seg, self.reservoir_size)
+            # w_b = nn.init.constant(w_b, 0.5)
+            # self.readout_B = nn.Parameter(w_b, requires_grad=True)
 
-        self.projection = nn.Linear(in_features=self.reservoir_size,
+            self.projection = nn.Linear(in_features=self.reservoir_size,
                                         out_features=self.window_len,
                                         bias=True)
             
     ## x: [Batch, Input length, Channel]
     def forward(self, x):
         
-        batch_size = x.shape[0]
-        # normalization and permute     b,s,c -> b,c,s
-        seq_mean = torch.mean(x, dim=1).unsqueeze(1)
-        x = (x - seq_mean).permute(0, 2, 1)
+        if self.individual:
+            # out: [Batch, Prediction length, Channels]
+            out = torch.zeros(x.shape[0], x.shape[2], self.pred_len)
 
-        # downsampling: b,c,s -> bc,n,w -> bc,w,n
-        x = x.reshape(-1, self.window_len, self.input_seg).permute(0, 2, 1)
+            # For each channel:
+            for i in range(self.channels):
+                output = x[:,:,i].clone()
 
-        
-        ## Output x: [bc, Input Segment, reservoir size]
-        x = self.esn(x)
+                 ## Output x: [Batch, Input Segment, window length]
+                output = output.reshape(output.shape[0], self.input_seg, self.window_len)
 
-        ## Output x: [Batch, (Input Segment - Washout), reservoir size]
-        x = x[:, self.washout:, :]
-        
-        x = x.permute(0,2,1)
+                ## Output x: [Batch, Input Segment, reservoir size]
+                output = self.esn_layers[i](output)
 
-        x = self.readout(x)
+                ## Output x: [Batch, (Input Segment - Washout), reservoir size]
+                output = output[:, self.washout:, :]
 
-        x = x.permute(0, 2, 1)
-        ## Trainable Prediction/Readout layer.
-        ## Output x: [Batch, Pred Segment, reservoir size]
-        ## b: batch, s: input_segment - washout, r: reservoir size, p: pred_segment
-        # x = torch.einsum('bsr, srp -> bpr', x, self.readout_W) + self.readout_B
+                output = output.permute(0, 2, 1)
 
-        ## Trainable Projection Layer.
-        ## output x: [Batch, Pred Length]
-        x = self.projection(x)
-        x = x.reshape(batch_size, self.channels, self.pred_len)
+                ## Trainable Prediction/Readout layer.
+                ## Output x: [Batch, Pred Segment, reservoir size]
+                output = self.readout_layers[i](output)
 
-         # permute and denorm
-        x = x.permute(0, 2, 1) + seq_mean
+                output = output.permute(0, 2, 1)
 
-        return x
+                ## Trainable Projection Layer.
+                ## output x: [Batch, Pred Length]
+                output = self.projection_layers[i](output)
+                output = output.reshape(output.shape[0], -1)
+
+                out[:, i, :] = output
+
+            x = out
+
+
+
+
+
+        else:
+
+            ## Output x: [Batch, Input Segment, window length]
+            x = x.squeeze(-1)
+            x = x.reshape(x.shape[0], self.input_seg, self.window_len)
+
+            ## Output x: [Batch, Input Segment, reservoir size]
+            x = self.esn(x)
+
+            ## Output x: [Batch, (Input Segment - Washout), reservoir size]
+            x = x[:, self.washout:, :]
+            
+            x = x.permute(0,2,1)
+
+            x = self.readout(x)
+
+            x = x.permute(0, 2, 1)
+            ## Trainable Prediction/Readout layer.
+            ## Output x: [Batch, Pred Segment, reservoir size]
+            ## b: batch, s: input_segment - washout, r: reservoir size, p: pred_segment
+            # x = torch.einsum('bsr, srp -> bpr', x, self.readout_W) + self.readout_B
+
+            ## Trainable Projection Layer.
+            ## output x: [Batch, Pred Length]
+            x = self.projection(x)
+            x = x.reshape(x.shape[0], -1)
+
+            # Add Channel to dimension.
+            x = torch.unsqueeze(x, 1)
+
+        return x.permute(0,2,1) # to [Batch, Output length, Channel]

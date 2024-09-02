@@ -28,6 +28,7 @@ do
     --train_epochs 30 \
     --patience 5 \
     --individual 1 \
+    --loss mse \
     --itr 1 --batch_size 32 --learning_rate 0.02
 done
 

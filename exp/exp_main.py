@@ -3,6 +3,7 @@ from exp.exp_basic import Exp_Basic
 from models import Informer, Autoformer, Transformer, DLinear, Linear, PatchTST, SparseTSF, ESN, ConvLTF
 from utils.tools import EarlyStopping, adjust_learning_rate, visual, test_params_flop
 from utils.metrics import metric
+from utils.loss import HighOrderMSELoss, ExponentialMSELoss
 
 import numpy as np
 import torch
@@ -58,6 +59,10 @@ class Exp_Main(Exp_Basic):
             criterion = nn.MSELoss()
         elif self.args.loss == "smooth":
             criterion = nn.SmoothL1Loss()
+        elif self.args.loss =="expmse":
+            criterion = ExponentialMSELoss()
+        elif self.args.loss == "homse":
+            criterion = HighOrderMSELoss(p=4)
         else:
             criterion = nn.MSELoss()
         return criterion
