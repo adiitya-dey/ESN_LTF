@@ -53,14 +53,10 @@ class DFT(Function):
     @staticmethod
     def forward(ctx, input):
         transformed = torch.fft.rfft(input, dim=-1, norm="ortho").to(input.device)
-        # output = torch.stack((transformed.real, transformed.imag), dim=-1).to(input.device)
         return transformed
     
     @staticmethod
     def backward(ctx, grad_output):
-        # real = grad_output[:,:,:,0]
-        # imag = grad_output[:,:,:,1]
-        # complex_tensor = torch.complex(real, imag)
         inverse_transformed = torch.fft.irfft(grad_output, dim = -1, norm="ortho").to(grad_output.device)
         return inverse_transformed
     
@@ -68,32 +64,39 @@ class DFT(Function):
 class IDFT(Function):
     @staticmethod
     def forward(ctx, input):
-        # real = input[:,:,:,0]
-        # imag = input[:,:,:,1]
-        # complex_tensor = torch.complex(real, imag)
         transformed = torch.fft.irfft(input, dim=-1, norm="ortho").to(input.device)
         return transformed
     
     @staticmethod
     def backward(ctx, grad_output):
         transformed = torch.fft.rfft(grad_output, dim=-1, norm="ortho").to(grad_output.device)
-        # output = torch.stack((transformed.real, transformed.imag), dim=-1).to(grad_output.device)
         return transformed
+
 
 class ComplexFFN(nn.Module):
     def __init__(self, input_size, hidden_size, output_size):
         super(ComplexFFN, self).__init__()
         self.fc1 = nn.Linear(input_size, hidden_size, dtype=torch.complex64)  # Input layer to hidden layer
-        # self.relu = nn.Tanh()  # Activation function
         self.fc2 = nn.Linear(hidden_size, output_size, dtype=torch.complex64)  # Hidden layer to output layer
-        # self.dropout = nn.Dropout(0.2) 
+
 
     # x: [batch, input_seg, reservoir size]
     def forward(self, x):
         out = self.fc1(x)  # Linear transformation
-        # out = self.relu(out)  # Apply ReLU activation
         out = self.fc2(out)  # Linear transformation
-        # out = self.dropout(out)
+        return out
+
+class RealFFN(nn.Module):
+    def __init__(self, input_size, hidden_size, output_size):
+        super(RealFFN, self).__init__()
+        self.fc1 = nn.Linear(input_size, hidden_size)  # Input layer to hidden layer
+        self.fc2 = nn.Linear(hidden_size, output_size)  # Hidden layer to output layer
+
+
+    # x: [batch, input_seg, reservoir size]
+    def forward(self, x):
+        out = self.fc1(x)  # Linear transformation
+        out = self.fc2(out)  # Linear transformation
         return out
 
 
@@ -107,18 +110,50 @@ class Model(nn.Module):
         self.pred_len = configs.pred_len
         
         self.channels = configs.enc_in
-        self.window_len = 12
+        self.window_len = 6
         self.input_seg = self.seq_len // self.window_len
         self.pred_seg = self.pred_len // self.window_len
  
-        self.complex_pred = nn.ModuleList()
+        # self.complex_pred = nn.ModuleList()
+        self.real_pred = nn.ModuleList()
 
 
         for i in range(self.channels):
-            self.complex_pred.append(ComplexFFN(input_size=self.input_seg, 
+            # self.complex_pred.append(ComplexFFN(input_size=self.input_seg, 
+            #                                     output_size=self.pred_seg,
+            #                                     hidden_size=16))
+            
+            self.real_pred.append(RealFFN(input_size=self.input_seg, 
                                                 output_size=self.pred_seg,
                                                 hidden_size=16))
 
+
+    # def forward(self, x):
+    #     # x: [Batch, Input length, Channel]
+
+    #     seq_mean = torch.mean(x, dim=1, keepdim=True)
+    #     x = x - seq_mean
+
+    #     x = x.permute(0,2,1)
+        
+
+    #     out = torch.zeros(x.shape[0], self.channels, self.pred_len)
+    #     for i in range(self.channels):
+    #         seg = x[:, i, :].reshape(-1, self.input_seg, self.window_len)
+
+
+    #         seg = DFT.apply(seg)
+
+    #         y = self.complex_pred[i](seg.permute(0,2,1))
+
+    #         y = IDFT.apply(y.permute(0,2,1))
+
+    #         y = y.reshape(x.shape[0], -1)
+
+    #         out[:,i,:] = y
+        
+    #     return out.permute(0,2,1) + seq_mean # [Batch, Output length, Channel]
+    
 
     def forward(self, x):
         # x: [Batch, Input length, Channel]
@@ -134,65 +169,15 @@ class Model(nn.Module):
             seg = x[:, i, :].reshape(-1, self.input_seg, self.window_len)
 
 
-            seg = DFT.apply(seg)
+            seg = DCT.apply(seg)
 
-            y = self.complex_pred[i](seg.permute(0,2,1))
+            y = self.real_pred[i](seg.permute(0,2,1))
 
-            y = IDFT.apply(y.permute(0,2,1))
+            y = IDCT.apply(y.permute(0,2,1))
 
             y = y.reshape(x.shape[0], -1)
 
             out[:,i,:] = y
-
-
-
-
-
-
         
         return out.permute(0,2,1) + seq_mean # [Batch, Output length, Channel]
 
-
-    # def forward(self, x):
-    #     # x: [Batch, Input length, Channel]
-
-    #     seq_mean = torch.mean(x, dim=1, keepdim=True)
-    #     x = x - seq_mean
-
-    #     x = x.permute(0,2,1)
-        
-
-    #     out = torch.zeros(x.shape[0], self.channels, self.pred_len)
-    #     for i in range(self.channels):
-    #         # seg = x[:,i,:].reshape(-1, self.input_seg, self.window_len)
-    #         full = x[:, i, :].unsqueeze(1)
-
-    #         # seg = DCT.apply(seg)
-    #         full = DCT.apply(full)
-
-            
-
-
-    #         # y_seg= self.seg_predictor[i](seg.permute(0,2,1))
-    #         y_full = self.full_predictor[i](full)
-
-    #         # y_seg = IDCT.apply(y_seg.permute(0,2,1))
-    #         y_full = IDCT.apply(y_full).squeeze(1)
-
-    #         # y_seg = y_seg.reshape(x.shape[0], -1)
-
-    #         y = y_full # y_seg + 
-
-    #         out[:,i,:] = y
-
-
-
-
-
-
-        
-    #     return out.permute(0,2,1) + seq_mean # [Batch, Output length, Channel]
-    
-
-
-    
