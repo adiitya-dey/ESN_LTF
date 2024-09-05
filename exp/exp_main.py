@@ -1,6 +1,6 @@
 from data_provider.data_factory import data_provider
 from exp.exp_basic import Exp_Basic
-from models import Informer, Autoformer, Transformer, DLinear, Linear, PatchTST, SparseTSF, ESN, ConvLTF
+from models import Informer, Autoformer, Transformer, DLinear, Linear, PatchTST, SparseTSF, ESN
 from utils.tools import EarlyStopping, adjust_learning_rate, visual, test_params_flop
 from utils.metrics import metric
 from utils.loss import HighOrderMSELoss, ExponentialMSELoss
@@ -35,7 +35,6 @@ class Exp_Main(Exp_Basic):
             'PatchTST': PatchTST,
             'SparseTSF': SparseTSF,
             'ESN': ESN,
-            'ConvLTF': ConvLTF
 
         }
         model = model_dict[self.args.model].Model(self.args).float()
