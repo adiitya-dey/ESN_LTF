@@ -76,13 +76,15 @@ class ConvBlock(nn.Module):
                                  stride=1,
                                  groups=in_channels,
                                  padding="same",
-                                 padding_mode="replicate")
+                                 padding_mode="replicate",
+                                 bias=False)
         
         self.conv_pw = nn.Conv2d(in_channels=out_channels,
                                  out_channels=out_channels,
                                  kernel_size=1,
                                  stride=1,
                                  groups=out_channels,
+                                 bias=False
                                  )
         
     def forward(self, x):
@@ -114,6 +116,7 @@ class Model(nn.Module):
         self.conv_2 = ConvBlock(in_channels=self.channels, 
                                 out_channels=self.channels,
                                 window_len=self.window_len)
+        
 
         for i in range(self.channels):
             # self.complex_pred.append(ComplexFFN(input_size=self.input_seg, 
@@ -139,6 +142,10 @@ class Model(nn.Module):
         
         x += self.conv_2(self.conv_1(x))
 
+        # x = self.pred_conv_dw(x)
+
+        # x = self.pred_conv_pw(x)
+
         out = torch.zeros(x.shape[0], self.channels, self.pred_seg, self.window_len)
         for i in range(self.channels):
             seg = x[:, i, :, :]
@@ -147,7 +154,7 @@ class Model(nn.Module):
 
             out[:,i,:] = y.permute(0,2,1)
 
-        out = IDCT.apply(out).reshape(batch, self.channels, self.pred_len)
+        out = IDCT.apply(out).reshape(batch, self.channels, -1)
         
         return out.permute(0,2,1) + seq_mean # [Batch, Output length, Channel]
 
