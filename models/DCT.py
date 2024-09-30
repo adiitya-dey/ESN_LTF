@@ -4,7 +4,7 @@ import torch.nn.functional as F
 import numpy as np
 from torch.autograd import Function
 from scipy.fft import dct, idct
-import math
+
 
 class DCT(Function):
         @staticmethod
@@ -48,11 +48,13 @@ class IDCT(Function):
         # Convert back to PyTorch tensor
         grad_input = torch.from_numpy(grad_input_np).to(grad_output.device)
         return grad_input
-    
 
-class FFN(nn.Module):
+
+
+
+class RealFFN(nn.Module):
     def __init__(self, input_size, hidden_size, output_size):
-        super(FFN, self).__init__()
+        super(RealFFN, self).__init__()
         self.fc1 = nn.Linear(input_size, hidden_size)  # Input layer to hidden layer
         self.fc2 = nn.Linear(hidden_size, output_size)  # Hidden layer to output layer
 
@@ -62,6 +64,33 @@ class FFN(nn.Module):
         out = self.fc1(x)  # Linear transformation
         out = self.fc2(out)  # Linear transformation
         return out
+
+class ConvBlock(nn.Module):
+
+    def __init__(self, in_channels, out_channels, window_len) -> None:
+        super(ConvBlock, self).__init__()
+
+        self.conv_dw = nn.Conv2d(in_channels=in_channels,
+                                 out_channels=out_channels,
+                                 kernel_size=window_len,
+                                 stride=1,
+                                 groups=in_channels,
+                                 padding="same",
+                                 padding_mode="replicate",
+                                 bias=False)
+        
+        self.conv_pw = nn.Conv2d(in_channels=out_channels,
+                                 out_channels=out_channels,
+                                 kernel_size=1,
+                                 stride=1,
+                                 groups=out_channels,
+                                 bias=False
+                                 )
+        
+    def forward(self, x):
+        x = self.conv_pw(self.conv_dw(x))
+        return x
+
 
 class Model(nn.Module):
     """
@@ -73,81 +102,61 @@ class Model(nn.Module):
         self.pred_len = configs.pred_len
         
         self.channels = configs.enc_in
+        self.window_len = configs.period_len
+        self.input_seg = self.seq_len // self.window_len
+        self.pred_seg = self.pred_len // self.window_len
+ 
+        # self.complex_pred = nn.ModuleList()
+        self.real_pred = nn.ModuleList()
+
+        self.conv_1 = ConvBlock(in_channels=self.channels, 
+                                out_channels=self.channels,
+                                window_len=self.window_len)
+
+        self.conv_2 = ConvBlock(in_channels=self.channels, 
+                                out_channels=self.channels,
+                                window_len=self.window_len)
         
-        low_pass_filter = torch.tensor([1, 1], dtype=torch.float32) / math.sqrt(2)
-        high_pass_filter = torch.tensor([-1, 1], dtype=torch.float32) / math.sqrt(2)
 
-        low_pass_filter = low_pass_filter.reshape(1,1,-1)
-        high_pass_filter = high_pass_filter.reshape(1,1,-1)
-
-        low_pass_filter = low_pass_filter.repeat(self.channels, 1, 1)
-        high_pass_filter = high_pass_filter.repeat(self.channels, 1, 1)
-
-        self.dec_lo = nn.Parameter(low_pass_filter, requires_grad=False)
-        self.dec_hi = nn.Parameter(high_pass_filter, requires_grad=False)
-        self.rec_lo = nn.Parameter(low_pass_filter, requires_grad=False)
-        self.rec_hi = nn.Parameter(high_pass_filter, requires_grad=False)
-
-
-
-        if (self.seq_len%2)!=0:
-            in_len = self.seq_len//2 + 1
-        else:
-            in_len = self.seq_len//2
-
-
-        if (self.pred_len%2) != 0:
-            out_len = self.pred_len//2 + 1
-        else:
-            out_len = self.pred_len//2
-
-        self.layer_lo = FFN(in_len,16,out_len)
-        self.layer_hi = FFN(in_len,16,out_len)
-        
-        
+        for i in range(self.channels):
+            # self.complex_pred.append(ComplexFFN(input_size=self.input_seg, 
+            #                                     output_size=self.pred_seg,
+            #                                     hidden_size=16))
+            
+            self.real_pred.append(RealFFN(input_size=self.input_seg, 
+                                                output_size=self.pred_seg,
+                                                hidden_size=16))
 
 
     def forward(self, x):
         # x: [Batch, Input length, Channel]
+
         batch, _, _ = x.shape
-
-        ## Scaled Normalization
-        x = x.permute(0,2,1)
-        seq_mean = torch.mean(x, axis=-1, keepdim=True)
-        x = (x - seq_mean) / math.sqrt(self.seq_len)
-
-        if (self.seq_len%2)!=0:
-            x = F.pad(x, (0, 1))
-
-        ## Haar decomposition
-        s1 = F.conv1d(input=x, weight=self.dec_lo, stride=2, groups=self.channels)
-        d1 = F.conv1d(input=x, weight=self.dec_hi, stride=2, groups=self.channels)
-
-        ## Cosine Transform
-        s1 = DCT.apply(s1)
-        d1 = DCT.apply(d1)
-
-        # Cut-off Frequency
-        # s1[:,:,s1.shape[-1]//3:] = 1e-12
+        seq_mean = torch.mean(x, dim=1, keepdim=True)
+        x = x - seq_mean
 
 
-        ## Prediction
-        pred_s1 = self.layer_lo(s1)
-        pred_d1 = self.layer_hi(s1)
+        x = x.permute(0,2,1).reshape(batch, self.channels, self.input_seg, self.window_len)
 
-        ## Inverse Cosine Transform
-        pred_s1 = IDCT.apply(pred_s1)
-        pred_d1 = IDCT.apply(pred_d1)
-
-        ## Haar reconstruction
-        pred_s1 = F.conv_transpose1d(input=pred_s1, weight=self.rec_lo, stride=2, groups=self.channels)
-        pred_d1 = F.conv_transpose1d(input=pred_d1, weight=self.rec_hi, stride=2, groups=self.channels)
-
-        out = pred_s1 + pred_d1
-
-        out = out * math.sqrt(self.pred_len) + seq_mean
+        x = DCT.apply(x)
         
-        return out.permute(0,2,1) # [Batch, Output length, Channel]
+        x += self.conv_2(self.conv_1(x))
+
+        # x = self.pred_conv_dw(x)
+
+        # x = self.pred_conv_pw(x)
+
+        out = torch.zeros(x.shape[0], self.channels, self.pred_seg, self.window_len)
+        for i in range(self.channels):
+            seg = x[:, i, :, :]
+
+            y = self.real_pred[i](seg.permute(0,2,1))
+
+            out[:,i,:] = y.permute(0,2,1)
+
+        out = IDCT.apply(out).reshape(batch, self.channels, -1)
+        
+        return out.permute(0,2,1) + seq_mean # [Batch, Output length, Channel]
 
 
 # class DFT(Function):
