@@ -2,7 +2,7 @@ if [ ! -d "./logs" ]; then
     mkdir ./logs
 fi
 
-model_name=ESN
+model_name=LTF
 
 root_path_name=./dataset/
 data_path_name=ETTh2.csv
