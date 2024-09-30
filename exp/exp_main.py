@@ -1,9 +1,9 @@
 from data_provider.data_factory import data_provider
 from exp.exp_basic import Exp_Basic
-from models import Informer, Autoformer, Transformer, DLinear, Linear, PatchTST, SparseTSF, ESN
+from models import LTF
 from utils.tools import EarlyStopping, adjust_learning_rate, visual, test_params_flop
 from utils.metrics import metric
-from utils.loss import HighOrderMSELoss, ExponentialMSELoss
+
 
 import numpy as np
 import torch
@@ -27,14 +27,7 @@ class Exp_Main(Exp_Basic):
 
     def _build_model(self):
         model_dict = {
-            'Autoformer': Autoformer,
-            'Transformer': Transformer,
-            'Informer': Informer,
-            'DLinear': DLinear,
-            'Linear': Linear,
-            'PatchTST': PatchTST,
-            'SparseTSF': SparseTSF,
-            'ESN': ESN,
+            'LTF': LTF
 
         }
         model = model_dict[self.args.model].Model(self.args).float()
@@ -58,13 +51,11 @@ class Exp_Main(Exp_Basic):
             criterion = nn.MSELoss()
         elif self.args.loss == "smooth":
             criterion = nn.SmoothL1Loss()
-        elif self.args.loss =="expmse":
-            criterion = ExponentialMSELoss()
-        elif self.args.loss == "homse":
-            criterion = HighOrderMSELoss(p=4)
         else:
             criterion = nn.MSELoss()
         return criterion
+
+
 
     def vali(self, vali_data, vali_loader, criterion):
         total_loss = []
@@ -83,7 +74,7 @@ class Exp_Main(Exp_Basic):
                 # encoder - decoder
                 if self.args.use_amp:
                     with torch.cuda.amp.autocast():
-                        if any(substr in self.args.model for substr in {'Linear', 'TST', 'SparseTSF', 'ESN', 'ConvLTF'}):
+                        if any(substr in self.args.model for substr in {'LTF'}):
                             outputs = self.model(batch_x)
                         else:
                             if self.args.output_attention:
@@ -91,7 +82,7 @@ class Exp_Main(Exp_Basic):
                             else:
                                 outputs = self.model(batch_x, batch_x_mark, dec_inp, batch_y_mark)
                 else:
-                    if any(substr in self.args.model for substr in {'Linear', 'TST', 'SparseTSF', 'ESN', 'ConvLTF'}):
+                    if any(substr in self.args.model for substr in {'LTF'}):
                         outputs = self.model(batch_x)
                     else:
                         if self.args.output_attention:
@@ -159,7 +150,7 @@ class Exp_Main(Exp_Basic):
                 # encoder - decoder
                 if self.args.use_amp:
                     with torch.cuda.amp.autocast():
-                        if any(substr in self.args.model for substr in {'Linear', 'TST', 'SparseTSF', 'ESN', 'ConvLTF'}):
+                        if any(substr in self.args.model for substr in {'LTF'}):
                             outputs = self.model(batch_x)
                         else:
                             if self.args.output_attention:
@@ -173,7 +164,7 @@ class Exp_Main(Exp_Basic):
                         loss = criterion(outputs, batch_y)
                         train_loss.append(loss.item())
                 else:
-                    if any(substr in self.args.model for substr in {'Linear', 'TST', 'SparseTSF', 'ESN', 'ConvLTF'}):
+                    if any(substr in self.args.model for substr in {'LTF'}):
                         outputs = self.model(batch_x)
                     else:
                         if self.args.output_attention:
@@ -260,7 +251,7 @@ class Exp_Main(Exp_Basic):
                 # encoder - decoder
                 if self.args.use_amp:
                     with torch.cuda.amp.autocast():
-                        if any(substr in self.args.model for substr in {'Linear', 'TST', 'SparseTSF', 'ESN', 'ConvLTF'}):
+                        if any(substr in self.args.model for substr in {'LTF'}):
                             outputs = self.model(batch_x)
                         else:
                             if self.args.output_attention:
@@ -268,7 +259,7 @@ class Exp_Main(Exp_Basic):
                             else:
                                 outputs = self.model(batch_x, batch_x_mark, dec_inp, batch_y_mark)
                 else:
-                    if any(substr in self.args.model for substr in {'Linear', 'TST', 'SparseTSF', 'ESN', 'ConvLTF'}):
+                    if any(substr in self.args.model for substr in {'LTF'}):
                         outputs = self.model(batch_x)
                     else:
                         if self.args.output_attention:
@@ -324,66 +315,9 @@ class Exp_Main(Exp_Basic):
         f.write('\n')
         f.close()
 
-        # np.save(folder_path + 'metrics.npy', np.array([mae, mse, rmse, mape, mspe,rse, corr]))
-        # np.save(folder_path + 'pred.npy', preds)
-        # np.save(folder_path + 'true.npy', trues)
-        # np.save(folder_path + 'x.npy', inputx)
         return
 
-    def predict(self, setting, load=False):
-        pred_data, pred_loader = self._get_data(flag='pred')
 
-        if load:
-            path = os.path.join(self.args.checkpoints, setting)
-            best_model_path = path + '/' + 'checkpoint.pth'
-            self.model.load_state_dict(torch.load(best_model_path))
-
-        preds = []
-
-        self.model.eval()
-        with torch.no_grad():
-            for i, (batch_x, batch_y, batch_x_mark, batch_y_mark) in enumerate(pred_loader):
-                batch_x = batch_x.float().to(self.device)
-                batch_y = batch_y.float()
-                batch_x_mark = batch_x_mark.float().to(self.device)
-                batch_y_mark = batch_y_mark.float().to(self.device)
-
-                # decoder input
-                dec_inp = torch.zeros([batch_y.shape[0], self.args.pred_len, batch_y.shape[2]]).float().to(
-                    batch_y.device)
-                dec_inp = torch.cat([batch_y[:, :self.args.label_len, :], dec_inp], dim=1).float().to(self.device)
-                # encoder - decoder
-                if self.args.use_amp:
-                    with torch.cuda.amp.autocast():
-                        if any(substr in self.args.model for substr in {'Linear', 'TST', 'SparseTSF', 'ESN', 'ConvLTF'}):
-                            outputs = self.model(batch_x)
-                        else:
-                            if self.args.output_attention:
-                                outputs = self.model(batch_x, batch_x_mark, dec_inp, batch_y_mark)[0]
-                            else:
-                                outputs = self.model(batch_x, batch_x_mark, dec_inp, batch_y_mark)
-                else:
-                    if any(substr in self.args.model for substr in {'Linear', 'TST', 'SparseTSF', 'ESN', 'ConvLTF'}):
-                        outputs = self.model(batch_x)
-                    else:
-                        if self.args.output_attention:
-                            outputs = self.model(batch_x, batch_x_mark, dec_inp, batch_y_mark)[0]
-                        else:
-                            outputs = self.model(batch_x, batch_x_mark, dec_inp, batch_y_mark)
-                pred = outputs.detach().cpu().numpy()  # .squeeze()
-                preds.append(pred)
-
-        preds = np.array(preds)
-        preds = preds.reshape(-1, preds.shape[-2], preds.shape[-1])
-
-        # result save
-        folder_path = './results/' + setting + '/'
-        if not os.path.exists(folder_path):
-            os.makedirs(folder_path)
-
-        np.save(folder_path + 'real_prediction.npy', preds)
-
-        return
     
     def calc_params(self, setting):
         # Calculate the number of trainable and non-trainable parameters
