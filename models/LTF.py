@@ -76,20 +76,9 @@ class Model(nn.Module):
 
         self.window = 6
         
-        low_pass_filter = torch.tensor([1, 1], dtype=torch.float32) / math.sqrt(2)
-        high_pass_filter = torch.tensor([-1, 1], dtype=torch.float32) / math.sqrt(2)
+        self.low_pass_filter = torch.tensor([1, 1], dtype=torch.float32) / math.sqrt(2)
 
-        low_pass_filter = low_pass_filter.reshape(1,1,-1)
-        high_pass_filter = high_pass_filter.reshape(1,1,-1)
-
-        low_pass_filter = low_pass_filter.repeat(self.channels, 1, 1)
-        high_pass_filter = high_pass_filter.repeat(self.channels, 1, 1)
-
-        self.dec_lo = nn.Parameter(low_pass_filter, requires_grad=False)
-        self.dec_hi = nn.Parameter(high_pass_filter, requires_grad=False)
-        self.rec_lo = nn.Parameter(low_pass_filter, requires_grad=False)
-        self.rec_hi = nn.Parameter(high_pass_filter, requires_grad=False)
-
+        self.low_pass_filter = self.low_pass_filter.reshape(1,1,-1).repeat(self.channels, 1, 1)
 
 
         if (self.seq_len%2)!=0:
@@ -98,15 +87,7 @@ class Model(nn.Module):
             in_len = self.seq_len//2
 
 
-        if (self.pred_len%2) != 0:
-            out_len = self.pred_len//2 + 1
-        else:
-            out_len = self.pred_len//2
-
         self.layer_lo = FFN(in_len,16,self.pred_len)
-        self.layer_hi = FFN(in_len,16,self.pred_len)
-        
-        
 
 
     def forward(self, x):
@@ -122,55 +103,17 @@ class Model(nn.Module):
             x = F.pad(x, (0, 1))
 
         ## Haar decomposition
-        s1 = F.conv1d(input=x, weight=self.dec_lo, stride=2, groups=self.channels)
-        # d1 = F.conv1d(input=x, weight=self.dec_hi, stride=2, groups=self.channels)
+        s1 = F.conv1d(input=x, weight=self.low_pass_filter, stride=2, groups=self.channels)
 
         ## Cosine Transform
         s1 = DCT.apply(s1) / math.sqrt(s1.shape[-1])
-        # d1 = DCT.apply(d1)
-
-        # Cut-off Frequency
-        # s1[:,:,s1.shape[-1]//3:] = 1e-12
 
 
         ## Prediction
         pred_s1 = self.layer_lo(s1)
-        # pred_d1 = self.layer_hi(s1)
 
-        ## Inverse Cosine Transform
-        # pred_s1 = IDCT.apply(pred_s1)
-        # pred_d1 = IDCT.apply(pred_d1)
-
-        # ## Haar reconstruction
-        # pred_s1 = F.conv_transpose1d(input=pred_s1, weight=self.rec_lo, stride=2, groups=self.channels)
-        # pred_d1 = F.conv_transpose1d(input=pred_d1, weight=self.rec_hi, stride=2, groups=self.channels)
-
-        # out = pred_s1 + pred_d1
 
         out = pred_s1 + seq_mean
         
         return out.permute(0,2,1) # [Batch, Output length, Channel]
 
-
-# class DFT(Function):
-#     @staticmethod
-#     def forward(ctx, input):
-#         transformed = torch.fft.rfft(input, dim=-1, norm="ortho").to(input.device)
-#         return transformed
-    
-#     @staticmethod
-#     def backward(ctx, grad_output):
-#         inverse_transformed = torch.fft.irfft(grad_output, dim = -1, norm="ortho").to(grad_output.device)
-#         return inverse_transformed
-    
-
-# class IDFT(Function):
-#     @staticmethod
-#     def forward(ctx, input):
-#         transformed = torch.fft.irfft(input, dim=-1, norm="ortho").to(input.device)
-#         return transformed
-    
-#     @staticmethod
-#     def backward(ctx, grad_output):
-#         transformed = torch.fft.rfft(grad_output, dim=-1, norm="ortho").to(grad_output.device)
-#         return transformed
