@@ -9,7 +9,7 @@ data_path_name=ETTh1.csv
 model_id_name=ETTh1
 data_name=ETTh1
 
-seq_len=336
+seq_len=512
 for pred_len in 96 192 336 720
 do
   python -u run_longExp.py \

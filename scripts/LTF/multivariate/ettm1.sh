@@ -2,14 +2,14 @@ if [ ! -d "./logs" ]; then
     mkdir ./logs
 fi
 
-model_name=ESN
+model_name=LTF
 
 root_path_name=./dataset/
 data_path_name=ETTm1.csv
 model_id_name=ETTm1
 data_name=ETTm1
 
-seq_len=336
+seq_len=512
 for pred_len in 96 192 336 720
 do
   python -u run_longExp.py \
