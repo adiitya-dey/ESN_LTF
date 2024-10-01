@@ -126,7 +126,7 @@ class Model(nn.Module):
         # d1 = F.conv1d(input=x, weight=self.dec_hi, stride=2, groups=self.channels)
 
         ## Cosine Transform
-        s1 = DCT.apply(s1)
+        s1 = DCT.apply(s1) / math.sqrt(s1.shape[-1])
         # d1 = DCT.apply(d1)
 
         # Cut-off Frequency
