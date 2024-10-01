@@ -2,14 +2,14 @@ if [ ! -d "./logs" ]; then
     mkdir ./logs
 fi
 
-model_name=SparseTSF
+model_name=LTF
 
 root_path_name=./dataset/
 data_path_name=traffic.csv
 model_id_name=traffic
 data_name=custom
 
-seq_len=720
+seq_len=512
 for pred_len in 96 192 336 720
 do
   python -u run_longExp.py \
