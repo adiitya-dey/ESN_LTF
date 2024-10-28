@@ -8,9 +8,9 @@ class CustomLinearFunction(torch.autograd.Function):
     def forward(ctx, input, weight, bias=None):
         # Save input and weight for backward pass
         ctx.save_for_backward(input, weight, bias)
-        output = torch.matmul(input, weight)
+        output = input @ weight
         if bias is not None:
-            output += bias.unsqueeze(0).expand_as(output)
+            output += bias
         return output
 
     @staticmethod
@@ -22,89 +22,124 @@ class CustomLinearFunction(torch.autograd.Function):
         grad_input = grad_weight = grad_bias = None
 
         if ctx.needs_input_grad[0]:
-            grad_input = torch.matmul(grad_output.squeeze(1), weight.T)
+            grad_input = grad_output @ weight.T
+
+
         if ctx.needs_input_grad[1]:
-            grad_weight = torch.matmul(grad_output.T, input)
+            grad_weight = input.transpose(1, 2) @ grad_output
+            grad_weight = torch.mean(grad_weight, dim=0)
+
+
         if bias is not None and ctx.needs_input_grad[2]:
-            grad_bias = grad_output.sum(0)
+            grad_bias = torch.mean(grad_output, dim=[1, 0])
+
 
         return grad_input, grad_weight, grad_bias
 
 class CustomLinear(nn.Module):
     def __init__(self, in_features, out_features, bias=True):
         super(CustomLinear, self).__init__()
-        w = torch.empty(in_features, out_features)
-        w = nn.init.xavier_uniform_(w)
-        self.W = nn.Parameter(w)
+        self.weight = nn.Parameter(nn.init.kaiming_uniform_(torch.empty(in_features, out_features)))
         if bias:
-            self.bias = nn.Parameter(torch.randn(out_features))
+          self.b = nn.Parameter(torch.zeros(out_features))
         else:
-            self.bias = None
+          self.b = None
 
     def forward(self, x):
-       
-        out = CustomLinearFunction.apply(x, self.W, self.bias)
-        return out
+        return CustomLinearFunction.apply(x, self.weight, self.b)
+    
 
-
-
-class ReducedRankFunction(torch.autograd.Function):
+class ThinFunction(torch.autograd.Function):
     @staticmethod
-    def forward(ctx, input, U, S, VT, bias=None):
+    def forward(ctx, input, U, S, V, bias=None):
         # Save input and weight for backward pass
-        ctx.save_for_backward( input, U, S, VT, bias)
-        output = torch.matmul(torch.matmul(torch.matmul(input, U), S), VT)
+        ctx.save_for_backward(input, U, S, V, bias)
+        output = input @ U
+        output = output @ S
+        output = output @ V.T
         if bias is not None:
-            output += bias.unsqueeze(0).expand_as(output)
+            output += bias
         return output
 
     @staticmethod
     def backward(ctx, grad_output):
-        input, U, S, VT, bias = ctx.saved_tensors
+        # Retrieve saved tensors
+        input, U, S, V, bias = ctx.saved_tensors
 
         # Compute gradients for input, weight, and bias
-        grad_input = grad_U = grad_S = grad_VT = grad_bias = None
+        grad_input = grad_U = grad_S = grad_V = grad_bias = None
 
-        if ctx.needs_input_grad[0]:  # grad_output shape: (b, c, H)
-            # Calculate gradient with respect to the input
-            grad_input = torch.matmul(grad_output.squeeze(1), torch.matmul(torch.matmul(U, S), VT).T)
+        if ctx.needs_input_grad[0]:
+            grad_input = grad_output @ V
+            grad_input = grad_input @ S
+            grad_input = grad_input @ U
 
-        if ctx.needs_input_grad[1]:  # grad_U
-            # Calculate gradient with respect to U
-            grad_U = torch.matmul(input.permute(0,2,1), torch.matmul(grad_output, torch.matmul(S, VT).T)).squeeze(0)
+        if ctx.needs_input_grad[1]:
+            grad_U = input.transpose(1,2) @ grad_output
+            grad_U = grad_U @ V
+            grad_U = grad_U @ S
+            grad_U = torch.mean(grad_U, dim=0, keepdim=False)
 
-        if ctx.needs_input_grad[2]:  # grad_S
-            # Calculate gradient with respect to S
-            grad_S = torch.matmul(torch.matmul(input,U).T, torch.matmul(grad_output, VT.T))
-
-        if ctx.needs_input_grad[3]:  # grad_VT
-            # Calculate gradient with respect to VT
-            grad_VT = torch.matmul(torch.matmul(input, torch.matmul(U,S)).T, grad_output)
-
-        if bias is not None and ctx.needs_input_grad[4]:  # grad_bias
-            grad_bias = grad_output.sum(dim=0)
-
-        return grad_input, grad_U, grad_S, grad_VT, grad_bias
+            # projection_U = (U.T @ grad_U + grad_U.T @ U) / 2
+            # grad_U = grad_U - U @ projection_U
+            #nn.utils.clip_grad_norm_(grad_U, max_norm=1.0)
 
 
-class ReducedRankLinear(nn.Module):
-    def __init__(self, in_features, out_features, bias=True):
-        super(ReducedRankLinear, self).__init__()
-        rank = 15
+        if ctx.needs_input_grad[2]:
+            grad_S = input @ U
+            grad_S = grad_S.transpose(1,2) @ grad_output
+            grad_S = grad_S @ V
+            grad_S = torch.mean(grad_S, dim=0, keepdim=False)
+            grad_S = torch.diag(torch.diagonal(grad_S))
+            #nn.utils.clip_grad_norm_(grad_S, max_norm=1.0)
+
+
+        if ctx.needs_input_grad[3]:
+            grad_V = input @ U
+            grad_V = grad_V @ S
+            grad_V = grad_V.transpose(1,2) @ grad_output
+            grad_V = grad_V.transpose(1,2)
+            grad_V = torch.mean(grad_V, dim=0, keepdim=False)
+
+            # projection_V = (V.T @ grad_V + grad_V.T @ V) / 2
+            # grad_V = grad_V - V @ projection_V
+
+        if bias is not None and ctx.needs_input_grad[4]:
+            grad_bias = torch.mean(grad_output, dim=[1, 0])
+
+        return grad_input, grad_U, grad_S, grad_V, grad_bias
+
+    # @staticmethod
+    # def steifel_projection(W, W_grad):
+    #   projection = (W.T @ W_grad + W_grad.T @ W) / 2
+    #   projection = W @ projection
+    #   return W_grad - projection
+
+
+class ThinLinear(nn.Module):
+    def __init__(self, in_features, out_features, rank, bias=True):
+        super(ThinLinear, self).__init__()
+        self.in_features = in_features
+        self.out_features = out_features
+        self.rank = rank
+        self.bias = bias
+
         wU = torch.empty(in_features, rank)
-        wS= torch.empty(rank, rank)
-        wVT = torch.empty(rank, out_features)
+        nn.init.orthogonal_(wU)
+        self.U = nn.Parameter(wU)
 
-        self.U = nn.Parameter(nn.init.xavier_uniform_(wU))
-        self.S = nn.Parameter(nn.init.xavier_uniform_(wS))
-        self.VT = nn.Parameter(nn.init.xavier_uniform_(wVT))
+        wV = torch.empty(out_features, rank)
+        nn.init.orthogonal_(wV)
+        self.V = nn.Parameter(wV)
 
-        if bias:
-            self.bias = nn.Parameter(torch.randn(out_features))
+        wS = torch.empty(rank)
+        nn.init.uniform_(wS, a=0.01, b=0.1)
+        self.S = nn.Parameter(torch.diag(wS))
+
+        if self.bias:
+          self.b = nn.Parameter(torch.zeros(out_features))
         else:
-            self.bias = None
+          self.b = None
 
     def forward(self, x):
-       
-        out = ReducedRankFunction.apply(x, self.U, self.S, self.VT, self.bias)
-        return out
+        return ThinFunction.apply(x, self.U, self.S, self.V, self.b)
