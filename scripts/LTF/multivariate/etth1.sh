@@ -25,7 +25,7 @@ do
     --period_len 24 \
     --enc_in 7 \
     --train_epochs 30 \
-    --patience 5 \
+    --patience 10 \
     --itr 1 --batch_size 32 --learning_rate 0.01
 done
 

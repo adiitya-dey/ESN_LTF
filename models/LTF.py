@@ -6,6 +6,8 @@ from torch.autograd import Function
 from scipy.fft import dct, idct
 import math
 
+from layers.LowRankLinear import ThinLinear, ReducedVanillaLinear
+
 class DCT(Function):
         @staticmethod
         def forward(ctx, input):
@@ -87,7 +89,15 @@ class Model(nn.Module):
             in_len = self.seq_len//2
 
 
-        self.layer_lo = FFN(in_len,16,self.pred_len)
+        # self.layer_lo = nn.Linear(in_len,self.pred_len)
+        self.layer_lo = ThinLinear(in_features=in_len,
+                                   out_features=self.pred_len,
+                                   rank=35,
+                                   bias=True)
+        # self.layer_lo = ReducedVanillaLinear(in_features=in_len,
+        #                            out_features=self.pred_len,
+        #                            rank=35,
+        #                            bias=True)
 
 
     def forward(self, x):
@@ -117,3 +127,6 @@ class Model(nn.Module):
         
         return out.permute(0,2,1) # [Batch, Output length, Channel]
 
+
+    def step(self):
+        self.layer_lo.step()

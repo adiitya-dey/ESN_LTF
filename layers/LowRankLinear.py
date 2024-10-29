@@ -80,6 +80,7 @@ class ThinFunction(torch.autograd.Function):
             grad_U = grad_U @ S
             grad_U = torch.mean(grad_U, dim=0, keepdim=False)
 
+            # grad_U = (grad_U @ U.T - U @ grad_U.T) @ U
             # projection_U = (U.T @ grad_U + grad_U.T @ U) / 2
             # grad_U = grad_U - U @ projection_U
             #nn.utils.clip_grad_norm_(grad_U, max_norm=1.0)
@@ -90,7 +91,7 @@ class ThinFunction(torch.autograd.Function):
             grad_S = grad_S.transpose(1,2) @ grad_output
             grad_S = grad_S @ V
             grad_S = torch.mean(grad_S, dim=0, keepdim=False)
-            grad_S = torch.diag(torch.diagonal(grad_S))
+            # grad_S = torch.diag(torch.diagonal(grad_S))
             #nn.utils.clip_grad_norm_(grad_S, max_norm=1.0)
 
 
@@ -101,6 +102,7 @@ class ThinFunction(torch.autograd.Function):
             grad_V = grad_V.transpose(1,2)
             grad_V = torch.mean(grad_V, dim=0, keepdim=False)
 
+            # grad_V = (grad_V @ V.T - V @ grad_V.T) @ V
             # projection_V = (V.T @ grad_V + grad_V.T @ V) / 2
             # grad_V = grad_V - V @ projection_V
 
@@ -143,3 +145,56 @@ class ThinLinear(nn.Module):
 
     def forward(self, x):
         return ThinFunction.apply(x, self.U, self.S, self.V, self.b)
+    
+    def step(self):
+
+        # pass
+        with torch.no_grad():
+            self.U.data, R1 = torch.linalg.qr(self.U.data)
+            self.V.data, R2 = torch.linalg.qr(self.V.data)
+            self.S.data = R1 @ self.S.data @ R2.T
+
+
+class ReducedVanillaLinear(nn.Module):
+    def __init__(self, in_features, out_features, rank, bias=True):
+        super(ReducedVanillaLinear, self).__init__()
+        self.in_features = in_features
+        self.out_features = out_features
+        self.rank = rank
+        self.bias = bias
+
+        wU = torch.empty(in_features, rank)
+        nn.init.orthogonal_(wU)
+        self.U = nn.Parameter(wU)
+
+        wV = torch.empty(out_features, rank)
+        nn.init.orthogonal_(wV)
+        self.V = nn.Parameter(wV)
+
+        wS = torch.empty(rank)
+        nn.init.uniform_(wS, a=0.01, b=0.1)
+        self.S = nn.Parameter(torch.diag(wS))
+
+        if self.bias:
+          self.b = nn.Parameter(torch.zeros(out_features))
+        else:
+          self.b = None
+    
+    def forward(self, x):
+        out = x @ self.U
+        out = out@ self.S
+        out = out @ self.V.T
+
+        if self.b is not None:
+            return out + self.b
+        else:
+            return out
+
+
+    def step(self):
+        # pass
+        with torch.no_grad():
+            self.U.data, R1 = torch.linalg.qr(self.U.data)
+            self.V.data, R2 = torch.linalg.qr(self.V.data)
+            self.S.data = R1 @ self.S.data @ R2.T
+

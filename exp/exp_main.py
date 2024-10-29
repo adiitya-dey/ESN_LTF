@@ -193,6 +193,7 @@ class Exp_Main(Exp_Basic):
                 # else:
                 loss.backward()
                 model_optim.step()
+                self.model.step()
 
                 if self.args.lradj == 'TST':
                     adjust_learning_rate(model_optim, scheduler, epoch + 1, self.args, printout=False)
