@@ -88,12 +88,17 @@ class Model(nn.Module):
         else:
             in_len = self.seq_len//2
 
+         ## Create DCT matrix
+        identity_mat = np.eye(in_len)
+        dct_mat = dct(identity_mat, type=2, axis=0, norm="ortho")
+        self.dct_matrix = torch.tensor(dct_mat, dtype=torch.float)
 
-        # self.layer_lo = nn.Linear(in_len,self.pred_len)
-        self.layer_lo = ThinLinear(in_features=in_len,
-                                   out_features=self.pred_len,
-                                   rank=35,
-                                   bias=True)
+
+        self.layer_lo = nn.Linear(in_len,self.pred_len)
+        # self.layer_lo = ThinLinear(in_features=in_len,
+        #                            out_features=self.pred_len,
+        #                            rank=35,
+        #                            bias=True)
         # self.layer_lo = ReducedVanillaLinear(in_features=in_len,
         #                            out_features=self.pred_len,
         #                            rank=35,
@@ -116,7 +121,7 @@ class Model(nn.Module):
         s1 = F.conv1d(input=x, weight=self.low_pass_filter, stride=2, groups=self.channels)
 
         ## Cosine Transform
-        s1 = DCT.apply(s1) / s1.shape[-1]
+        s1 = s1 @ self.dct_matrix.T / s1.shape[-1]
 
 
         ## Prediction
@@ -129,4 +134,5 @@ class Model(nn.Module):
 
 
     def step(self):
-        self.layer_lo.step()
+        # self.layer_lo.step()
+        pass
