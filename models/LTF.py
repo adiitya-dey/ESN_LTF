@@ -118,17 +118,17 @@ class Model(nn.Module):
             x = F.pad(x, (0, 1))
 
         ## Haar decomposition
-        s1 = F.conv1d(input=x, weight=self.low_pass_filter, stride=2, groups=self.channels)
+        x = F.conv1d(input=x, weight=self.low_pass_filter, stride=2, groups=self.channels)
 
         ## Cosine Transform
-        s1 = s1 @ self.dct_matrix.T / s1.shape[-1]
+        x = DCT.apply(x) / x.shape[-1]
 
 
         ## Prediction
-        pred_s1 = self.layer_lo(s1)
+        out = self.layer_lo(x)
 
 
-        out = pred_s1 + seq_mean
+        out = out + seq_mean
         
         return out.permute(0,2,1) # [Batch, Output length, Channel]
 

@@ -2,15 +2,18 @@ if [ ! -d "./logs" ]; then
     mkdir ./logs
 fi
 
-model_name=LTF
+
 
 root_path_name=./dataset/
 data_path_name=ETTh2.csv
 model_id_name=ETTh2
 data_name=ETTh2
 
-seq_len=512
-for pred_len in 96 192 336 720
+for model_name in DLinear
+do
+for seq_len in 96 192 336 512 720 1440
+do
+for pred_len in 24 48 96 192 336 512 720
 do
   python -u run_longExp.py \
     --is_training 1 \
@@ -27,5 +30,7 @@ do
     --train_epochs 30 \
     --patience 5 \
     --itr 1 --batch_size 32 --learning_rate 0.01
+done
+done
 done
 
