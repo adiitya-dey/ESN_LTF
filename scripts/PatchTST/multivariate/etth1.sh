@@ -13,7 +13,7 @@ data_path_name=ETTh1.csv
 model_id_name=ETTh1
 data_name=ETTh1
 
-random_seed=2021
+#random_seed=2021
 for seq_len in 96 192 336 512 729 1440
 do
 for pred_len in 24 48 96 192 336 512 720
