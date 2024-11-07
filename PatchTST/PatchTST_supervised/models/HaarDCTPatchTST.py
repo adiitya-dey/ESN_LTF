@@ -108,7 +108,7 @@ class Model(nn.Module):
             
         self.low_pass_filter = torch.tensor([1, 1], dtype=torch.float32) / math.sqrt(2)
 
-        self.low_pass_filter = self.low_pass_filter.reshape(1,1,-1).repeat(self.channels, 1, 1)
+        self.low_pass_filter = self.low_pass_filter.reshape(1,1,-1).repeat(self.c_in, 1, 1)
     
     
     def forward(self, x):           # x: [Batch, Input length, Channel]
