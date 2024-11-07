@@ -19,7 +19,7 @@ do
 for pred_len in 24 48 96 192 336 512 720
 do
     python -u run_longExp.py \
-      --random_seed $random_seed \
+     # --random_seed $random_seed \
       --is_training 1 \
       --root_path $root_path_name \
       --data_path $data_path_name \
