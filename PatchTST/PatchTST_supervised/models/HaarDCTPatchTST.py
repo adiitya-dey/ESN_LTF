@@ -7,10 +7,34 @@ from torch import nn
 from torch import Tensor
 import torch.nn.functional as F
 import numpy as np
-
+import math
 from layers.PatchTST_backbone import PatchTST_backbone
 from layers.PatchTST_layers import series_decomp
 
+from torch.autograd import Function
+from scipy.fft import dct, idct
+
+
+class DCT(Function):
+        @staticmethod
+        def forward(ctx, input):
+            # Convert PyTorch tensor to NumPy array
+            input_np = input.cpu().numpy()
+            # Apply DCT using scipy
+            transformed_np = dct(input_np, type=2, norm="ortho", axis=-1, orthogonalize=True)
+            # Convert back to PyTorch tensor
+            output = torch.from_numpy(transformed_np).to(input.device)
+            return output
+        
+        @staticmethod
+        def backward(ctx, grad_output):
+            # Convert gradient to NumPy array
+            grad_output_np = grad_output.cpu().numpy()
+            # Apply IDCT using scipy
+            grad_input_np = idct(grad_output_np, type=2, norm='ortho', axis=-1, orthogonalize=True)
+            # Convert back to PyTorch tensor
+            grad_input = torch.from_numpy(grad_input_np).to(grad_output.device)
+            return grad_input
 
 class Model(nn.Module):
     def __init__(self, configs, max_seq_len:Optional[int]=1024, d_k:Optional[int]=None, d_v:Optional[int]=None, norm:str='BatchNorm', attn_dropout:float=0., 
@@ -20,9 +44,15 @@ class Model(nn.Module):
         super().__init__()
         
         # load parameters
-        c_in = configs.enc_in
-        context_window = configs.seq_len
+        self.c_in = configs.enc_in
+        self.context_window = configs.seq_len
         target_window = configs.pred_len
+
+        if (self.context_window%2)!=0:
+            self.context_window = self.context_window//2 + 1
+        else:
+            self.context_window = self.context_window//2
+
         
         n_layers = configs.e_layers
         n_heads = configs.n_heads
@@ -50,7 +80,7 @@ class Model(nn.Module):
         self.decomposition = decomposition
         if self.decomposition:
             self.decomp_module = series_decomp(kernel_size)
-            self.model_trend = PatchTST_backbone(c_in=c_in, context_window = context_window, target_window=target_window, patch_len=patch_len, stride=stride, 
+            self.model_trend = PatchTST_backbone(c_in=self.c_in, context_window = self.context_window, target_window=target_window, patch_len=patch_len, stride=stride, 
                                   max_seq_len=max_seq_len, n_layers=n_layers, d_model=d_model,
                                   n_heads=n_heads, d_k=d_k, d_v=d_v, d_ff=d_ff, norm=norm, attn_dropout=attn_dropout,
                                   dropout=dropout, act=act, key_padding_mask=key_padding_mask, padding_var=padding_var, 
@@ -58,7 +88,7 @@ class Model(nn.Module):
                                   pe=pe, learn_pe=learn_pe, fc_dropout=fc_dropout, head_dropout=head_dropout, padding_patch = padding_patch,
                                   pretrain_head=pretrain_head, head_type=head_type, individual=individual, revin=revin, affine=affine,
                                   subtract_last=subtract_last, verbose=verbose, **kwargs)
-            self.model_res = PatchTST_backbone(c_in=c_in, context_window = context_window, target_window=target_window, patch_len=patch_len, stride=stride, 
+            self.model_res = PatchTST_backbone(c_in=self.c_in, context_window = self.context_window, target_window=target_window, patch_len=patch_len, stride=stride, 
                                   max_seq_len=max_seq_len, n_layers=n_layers, d_model=d_model,
                                   n_heads=n_heads, d_k=d_k, d_v=d_v, d_ff=d_ff, norm=norm, attn_dropout=attn_dropout,
                                   dropout=dropout, act=act, key_padding_mask=key_padding_mask, padding_var=padding_var, 
@@ -67,7 +97,7 @@ class Model(nn.Module):
                                   pretrain_head=pretrain_head, head_type=head_type, individual=individual, revin=revin, affine=affine,
                                   subtract_last=subtract_last, verbose=verbose, **kwargs)
         else:
-            self.model = PatchTST_backbone(c_in=c_in, context_window = context_window, target_window=target_window, patch_len=patch_len, stride=stride, 
+            self.model = PatchTST_backbone(c_in=self.c_in, context_window = self.context_window, target_window=target_window, patch_len=patch_len, stride=stride, 
                                   max_seq_len=max_seq_len, n_layers=n_layers, d_model=d_model,
                                   n_heads=n_heads, d_k=d_k, d_v=d_v, d_ff=d_ff, norm=norm, attn_dropout=attn_dropout,
                                   dropout=dropout, act=act, key_padding_mask=key_padding_mask, padding_var=padding_var, 
@@ -75,18 +105,42 @@ class Model(nn.Module):
                                   pe=pe, learn_pe=learn_pe, fc_dropout=fc_dropout, head_dropout=head_dropout, padding_patch = padding_patch,
                                   pretrain_head=pretrain_head, head_type=head_type, individual=individual, revin=revin, affine=affine,
                                   subtract_last=subtract_last, verbose=verbose, **kwargs)
+            
+        self.low_pass_filter = torch.tensor([1, 1], dtype=torch.float32) / math.sqrt(2)
+
+        self.low_pass_filter = self.low_pass_filter.reshape(1,1,-1).repeat(self.channels, 1, 1)
     
     
     def forward(self, x):           # x: [Batch, Input length, Channel]
         if self.decomposition:
             res_init, trend_init = self.decomp_module(x)
             res_init, trend_init = res_init.permute(0,2,1), trend_init.permute(0,2,1)  # x: [Batch, Channel, Input length]
+
+            if (self.context_window%2)!=0:
+                res_init = F.pad(res_init, (0, 1))
+                trend_init = F.pad(res_init, (0, 1))
+
+            res_init = F.conv1d(input=res_init, weight=self.low_pass_filter, stride=2, groups=self.c_in)
+            trend_init = F.conv1d(input=trend_init, weight=self.low_pass_filter, stride=2, groups=self.c_in)
+
+            res_init = DCT.apply(res_init) / res_init.shape[-1]
+            trend_init = DCT.apply(trend_init) / trend_init.shape[-1]
+
+            
+
             res = self.model_res(res_init)
             trend = self.model_trend(trend_init)
             x = res + trend
             x = x.permute(0,2,1)    # x: [Batch, Input length, Channel]
         else:
             x = x.permute(0,2,1)    # x: [Batch, Channel, Input length]
+
+            if (self.context_window%2)!=0:
+                x = F.pad(x, (0, 1))
+
+            x = F.conv1d(input=x, weight=self.low_pass_filter, stride=2, groups=self.c_in)
+            x = DCT.apply(x) / x.shape[-1]
+
             x = self.model(x)
             x = x.permute(0,2,1)    # x: [Batch, Input length, Channel]
         return x
