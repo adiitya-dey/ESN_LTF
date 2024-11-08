@@ -50,7 +50,6 @@ do
     --features M \
     --seq_len $seq_len \
     --pred_len $pred_len \
-    --period_len 24 \
     --enc_in 7 \
     --train_epochs 50 \
     --patience 10 \
@@ -76,7 +75,6 @@ do
     --features M \
     --seq_len $seq_len \
     --pred_len $pred_len \
-    --period_len 24 \
     --enc_in 7 \
     --train_epochs 100 \
     --patience 10 \
@@ -102,7 +100,6 @@ do
     --features M \
     --seq_len $seq_len \
     --pred_len $pred_len \
-    --period_len 24 \
     --enc_in 7 \
     --train_epochs 100 \
     --patience 10 \
@@ -128,7 +125,6 @@ do
     --features M \
     --seq_len $seq_len \
     --pred_len $pred_len \
-    --period_len 24 \
     --enc_in 862 \
     --train_epochs 100 \
     --patience 10 \
@@ -154,7 +150,6 @@ do
     --features M \
     --seq_len $seq_len \
     --pred_len $pred_len \
-    --period_len 4 \
     --enc_in 21 \
     --train_epochs 100 \
     --patience 10 \
