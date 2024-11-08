@@ -6,7 +6,7 @@ if [ ! -d "./logs/LongForecasting" ]; then
     mkdir ./logs/LongForecasting
 fi
 seq_len=336
-model_name=HaarDCTPatchTST
+model_name=HaarPatchTST
 
 root_path_name=./dataset/
 data_path_name=ETTh1.csv
