@@ -23,7 +23,6 @@ do
     --features M \
     --seq_len $seq_len \
     --pred_len $pred_len \
-    --period_len 24 \
     --enc_in 7 \
     --train_epochs 50 \
     --patience 10 \
