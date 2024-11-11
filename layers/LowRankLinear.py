@@ -244,15 +244,19 @@ class ReducedLinear(nn.Module):
         # Re-orthogonalize U and V using QR decomposition
         self.U.data, R1 = torch.linalg.qr(self.U.data)
         self.V.data, R2 = torch.linalg.qr(self.V.data)
+        
         self.S.data = R1 @ self.S.data @ R2.T
 
         # Perform SVD on the updated S matrix
         P, d, Q = torch.linalg.svd(self.S.data)
 
-        # Determine the new rank based on singular values exceeding the tolerance
-        new_rank = (d >= self.tol).sum().item()
-        self.rank = min(new_rank, self.rmax)
-        # print(self.rank)
+        norm_d = torch.linalg.norm(d)
+
+        for i in range(d.shape[0], 0, -1):
+            if self.tol < norm_d - torch.linalg.norm(d[:i]):
+                self.rank = i
+                break
+
 
         # Update S with the significant singular values
         self.S.data[:self.rank, :self.rank] = torch.diag(d[:self.rank])
