@@ -2,14 +2,14 @@ if [ ! -d "./logs" ]; then
     mkdir ./logs
 fi
 
-model_name=SparseTSF
+model_name=LTF
 
 root_path_name=./dataset/
 data_path_name=electricity.csv
 model_id_name=Electricity
 data_name=custom
 
-seq_len=720
+seq_len=336
 for pred_len in 96 192 336 720
 do
   python -u run_longExp.py \
@@ -22,9 +22,8 @@ do
     --features M \
     --seq_len $seq_len \
     --pred_len $pred_len \
-    --period_len 24 \
     --enc_in 321 \
-    --train_epochs 30 \
-    --patience 5 \
-    --itr 1 --batch_size 128 --learning_rate 0.02
+    --train_epochs 50 \
+    --patience 6 \
+    --itr 1 --batch_size 32 --learning_rate 0.01
 done

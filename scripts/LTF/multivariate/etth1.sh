@@ -9,9 +9,9 @@ data_path_name=ETTh1.csv
 model_id_name=ETTh1
 data_name=ETTh1
 
-for seq_len in 96 192 336 512 720 1440
+for seq_len in 512 336
 do
-for pred_len in 24 48 96 192 336 512 720
+for pred_len in 96 192 336 720
 do
   python -u run_longExp.py \
     --is_training 1 \
@@ -23,10 +23,9 @@ do
     --features M \
     --seq_len $seq_len \
     --pred_len $pred_len \
-    --period_len 24 \
     --enc_in 7 \
     --train_epochs 50 \
     --patience 6 \
-    --itr 1 --batch_size 32 --learning_rate 0.01
+    --itr 1 --batch_size 32 --learning_rate 0.001
 done
 done

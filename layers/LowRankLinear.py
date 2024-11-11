@@ -198,3 +198,70 @@ class ReducedVanillaLinear(nn.Module):
             self.V.data, R2 = torch.linalg.qr(self.V.data)
             self.S.data = R1 @ self.S.data @ R2.T
 
+
+class ReducedLinear(nn.Module):
+    def __init__(self, in_features, out_features, rank, bias=True, tol=1e-2):
+        super(ReducedLinear, self).__init__()
+        self.in_features = in_features
+        self.out_features = out_features
+        self.rank= min(rank, in_features, out_features)
+        self.rmax = rank
+        self.bias = bias
+        self.tol = tol
+
+        wU = torch.empty(in_features, self.rmax)
+        nn.init.orthogonal_(wU)
+        self.U = nn.Parameter(wU)
+
+        wV = torch.empty(out_features, self.rmax)
+        nn.init.orthogonal_(wV)
+        self.V = nn.Parameter(wV)
+
+        wS = torch.abs(torch.empty(self.rmax))
+        nn.init.uniform_(wS, a=0.1, b=1.0)  # Initialize with positive values
+        self.S = nn.Parameter(torch.diag(wS))
+
+        if self.bias:
+          self.b = nn.Parameter(torch.zeros(out_features))
+        else:
+          self.b = None
+
+    def forward(self, x):
+
+        # Apply the low-rank linear transformation
+        out = x @ self.U[:, :self.rank]
+        out = out @ self.S[:self.rank, :self.rank]
+        out = out @ self.V[:, :self.rank].T
+
+        # Add bias if applicable
+        if self.bias:
+            out = out + self.b
+        return out
+
+
+    @torch.no_grad()
+    def step(self):
+        # Re-orthogonalize U and V using QR decomposition
+        self.U.data, R1 = torch.linalg.qr(self.U.data)
+        self.V.data, R2 = torch.linalg.qr(self.V.data)
+        self.S.data = R1 @ self.S.data @ R2.T
+
+        # Perform SVD on the updated S matrix
+        P, d, Q = torch.linalg.svd(self.S.data)
+
+        # Determine the new rank based on singular values exceeding the tolerance
+        new_rank = (d >= self.tol).sum().item()
+        self.rank = min(new_rank, self.rmax)
+        # print(self.rank)
+
+        # Update S with the significant singular values
+        self.S.data[:self.rank, :self.rank] = torch.diag(d[:self.rank])
+
+        # Update U and V to include only the significant singular vectors
+        self.U.data[:,:self.rank] = self.U.data @ P[:, :self.rank]
+        self.V.data[:,:self.rank] = self.V.data @ Q[:, :self.rank]
+
+
+
+
+

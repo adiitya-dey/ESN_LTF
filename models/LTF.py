@@ -6,7 +6,7 @@ from torch.autograd import Function
 from scipy.fft import dct, idct
 import math
 
-from layers.LowRankLinear import ThinLinear, ReducedVanillaLinear
+from layers.LowRankLinear import ThinLinear, ReducedVanillaLinear, ReducedLinear
 
 class DCT(Function):
         @staticmethod
@@ -93,8 +93,8 @@ class Model(nn.Module):
         dct_mat = dct(identity_mat, type=2, axis=0, norm="ortho")
         self.dct_matrix = torch.tensor(dct_mat, dtype=torch.float)
 
-
-        self.layer_lo = nn.Linear(in_len,self.pred_len)
+        self.conv_1x1 = nn.Conv1d(in_channels=self.channels, out_channels=self.channels, kernel_size=1, groups=self.channels, bias=False)
+        # self.layer_lo = nn.Linear(in_len,self.pred_len)
         # self.layer_lo = ThinLinear(in_features=in_len,
         #                            out_features=self.pred_len,
         #                            rank=35,
@@ -103,6 +103,10 @@ class Model(nn.Module):
         #                            out_features=self.pred_len,
         #                            rank=35,
         #                            bias=True)
+        self.layer_lo = ReducedLinear(in_features=in_len,
+                                      out_features=self.pred_len,
+                                      rank=35,)
+
 
 
     def forward(self, x):
@@ -116,13 +120,15 @@ class Model(nn.Module):
 
         if (self.seq_len%2)!=0:
             x = F.pad(x, (0, 1))
-
+            
+        x = self.conv_1x1(x)
         ## Haar decomposition
         x = F.conv1d(input=x, weight=self.low_pass_filter, stride=2, groups=self.channels)
 
         ## Cosine Transform
         x = DCT.apply(x) / x.shape[-1]
 
+        
 
         ## Prediction
         out = self.layer_lo(x)
@@ -134,5 +140,5 @@ class Model(nn.Module):
 
 
     def step(self):
-        # self.layer_lo.step()
-        pass
+        self.layer_lo.step()
+        # pass

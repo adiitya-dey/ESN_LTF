@@ -1,6 +1,6 @@
 from data_provider.data_factory import data_provider
 from exp.exp_basic import Exp_Basic
-from models import LTF, DLinear, HaarDLinear
+from models import LTF
 from utils.tools import EarlyStopping, adjust_learning_rate, visual, test_params_flop
 from utils.metrics import metric
 
@@ -28,8 +28,8 @@ class Exp_Main(Exp_Basic):
     def _build_model(self):
         model_dict = {
             'LTF': LTF,
-            'DLinear' : DLinear,
-            'HaarDLinear': HaarDLinear
+            # 'DLinear' : DLinear,
+            # 'HaarDLinear': HaarDLinear
 
         }
         model = model_dict[self.args.model].Model(self.args).float()
@@ -330,6 +330,7 @@ class Exp_Main(Exp_Basic):
         f = open("parameters.txt", 'a')
         f.write(setting + "  \n")
         f.write('Trainable Params:{}, Non-Trainable Params:{}, Total Params:{}'.format(trainable_params, non_trainable_params, trainable_params + non_trainable_params))
+        f.write(f"rank: {self.model.layer_lo.rank}")
         f.write('\n')
         f.write('\n')
         f.close()
