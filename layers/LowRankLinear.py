@@ -27,7 +27,7 @@ class AnotherLinear(nn.Module):
         self.V = nn.Parameter(wV)
 
         wS = torch.abs(torch.empty(self.rank, self.rank))
-        nn.init.constant_(wS, 0)  # Initialize with positive values
+        nn.init.constant_(wS, 1/self.rank)  # Initialize with positive values
         self.S = nn.Parameter(wS)
 
     
