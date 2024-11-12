@@ -23,7 +23,7 @@ class AnotherLinear(nn.Module):
         self.U = nn.Parameter(wU)
         
 
-        wV = torch.empty(out_features, self.rank)
+        wV = torch.empty(self.rank, out_features)
         nn.init.orthogonal_(wV)
         self.V = nn.Parameter(wV)
 
@@ -34,7 +34,7 @@ class AnotherLinear(nn.Module):
     
 
     def forward(self, x):
-        out = x @ self.U @ self.S @ self.V.T
+        out = x @ self.U @ self.S @ self.V
        
         # Add bias if applicable
         if self.bias:
