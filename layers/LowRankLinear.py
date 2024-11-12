@@ -24,7 +24,7 @@ class AnotherLinear(nn.Module):
 
         wV = torch.empty(out_features, self.rank)
         nn.init.orthogonal_(wV)
-        self.V = nn.Parameter(self.V)
+        self.V = nn.Parameter(wV)
 
         wS = torch.abs(torch.empty(self.rank, self.rank))
         nn.init.constant_(wS, 0)  # Initialize with positive values
