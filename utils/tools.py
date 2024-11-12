@@ -154,7 +154,7 @@ class WaveletMSELoss(nn.Module):
         y_pred_D = y_pred_D.permute(0,2,1)
         y_true_D = y_true_D.permute(0,2,1)
 
-        total_loss = self.loss_A(y_pred_A, y_true_A) + 1.5 * self.loss_B(y_pred_D, y_true_D)
+        total_loss = self.loss_A(y_pred_A, y_true_A) + 2.0 * self.loss_B(y_pred_D, y_true_D)
 
         return total_loss
 

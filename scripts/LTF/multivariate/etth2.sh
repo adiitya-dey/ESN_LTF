@@ -9,8 +9,8 @@ data_path_name=ETTh2.csv
 model_id_name=ETTh2
 data_name=ETTh2
 
-for model_name in LTF
-do
+model_name = LTF
+
 for seq_len in 512
 do
 for pred_len in 96 192 336 720
@@ -26,10 +26,10 @@ do
     --seq_len $seq_len \
     --pred_len $pred_len \
     --enc_in 7 \
-    --train_epochs 30 \
-    --patience 5 \
+    --train_epochs 50 \
+    --patience 6 \
+    --loss waveloss \
     --itr 1 --batch_size 32 --learning_rate 0.01
-done
 done
 done
 
