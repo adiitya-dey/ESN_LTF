@@ -1,7 +1,7 @@
 from data_provider.data_factory import data_provider
 from exp.exp_basic import Exp_Basic
 from models import LTF
-from utils.tools import EarlyStopping, adjust_learning_rate, visual, test_params_flop
+from utils.tools import EarlyStopping, adjust_learning_rate, visual, test_params_flop, WaveletMSELoss
 from utils.metrics import metric
 
 
@@ -53,6 +53,8 @@ class Exp_Main(Exp_Basic):
             criterion = nn.MSELoss()
         elif self.args.loss == "smooth":
             criterion = nn.SmoothL1Loss()
+        elif self.args.loss =="waveloss":
+            criterion = WaveletMSELoss()
         else:
             criterion = nn.MSELoss()
         return criterion
@@ -308,7 +310,7 @@ class Exp_Main(Exp_Basic):
         if not os.path.exists(folder_path):
             os.makedirs(folder_path)
 
-        mae, mse, rmse, mape, mspe, rse, corr, smape, r2 = metric(preds, trues)
+        mae, mse = metric(preds, trues)
         print('mse:{}, mae:{}'.format(mse, mae))
         f = open("result.txt", 'a')
         f.write(setting + "  \n")

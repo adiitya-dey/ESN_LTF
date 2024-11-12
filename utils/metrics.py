@@ -46,14 +46,8 @@ def R_squared(pred, true):
 def metric(pred, true):
     mae = MAE(pred, true)
     mse = MSE(pred, true)
-    rmse = RMSE(pred, true)
-    mape = MAPE(pred, true)
-    mspe = MSPE(pred, true)
-    rse = RSE(pred, true)
-    corr = CORR(pred, true)
-    smape = SMAPE(pred, true)
-    r2 = R_squared(pred, true)
+    
 
-    return mae, mse, rmse, mape, mspe, rse, corr, smape, r2
+    return mae, mse
 
 

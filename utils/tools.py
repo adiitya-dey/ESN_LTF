@@ -2,6 +2,10 @@ import numpy as np
 import torch
 import matplotlib.pyplot as plt
 import time
+import torch.nn as nn
+import math
+import torch.nn.functional as F
+
 
 plt.switch_backend('agg')
 
@@ -120,3 +124,31 @@ def test_params_flop(model,x_shape):
         print('{:<30}  {:<8}'.format('Computational complexity: ', macs))
         print('{:<30}  {:<8}'.format('Number of parameters: ', params))
         return macs, params
+    
+class WaveletMSELoss(nn.Module):
+    def __init__(self):
+        super(WaveletMSELoss, self).__init__()
+        self.low_pass_filter = torch.tensor([1, 1], dtype=torch.float32) / math.sqrt(2)
+        self.high_pass_filter = torch.tensor([-1, 1], dtype=torch.float32) / math.sqrt(2)
+        self.loss_A = nn.MSELoss()
+        self.loss_B = nn.MSELoss()
+
+    def forward(self, y_pred, y_true):
+        batch, length, channel = y_true.shape
+
+        low_pass = self.low_pass_filter.reshape(1,1,-1).repeat(channel, 1, 1)
+
+        y_pred = y_pred.permute(0,2,1)
+        y_true = y_true.permute(0,2,1)
+
+        y_pred_A = F.conv1d(input=y_pred, weight=low_pass, stride=2, groups=channel)
+        y_true_A = F.conv1d(input=y_pred, weight=low_pass, stride=2, groups=channel)
+
+        y_pred_A = y_pred_A.permute(0,2,1)
+        y_true_A = y_true_A.permute(0,2,1)
+
+        total_loss = self.loss_A(y_pred_A, y_true_A)
+        return total_loss
+
+
+

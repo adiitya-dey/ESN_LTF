@@ -26,6 +26,7 @@ do
     --enc_in 7 \
     --train_epochs 50 \
     --patience 6 \
+    --loss waveloss \
     --itr 1 --batch_size 32 --learning_rate 0.01
 done
 done
