@@ -142,7 +142,7 @@ class WaveletMSELoss(nn.Module):
         y_true = y_true.permute(0,2,1)
 
         y_pred_A = F.conv1d(input=y_pred, weight=low_pass, stride=2, groups=channel)
-        y_true_A = F.conv1d(input=y_pred, weight=low_pass, stride=2, groups=channel)
+        y_true_A = F.conv1d(input=y_true, weight=low_pass, stride=2, groups=channel)
 
         y_pred_A = y_pred_A.permute(0,2,1)
         y_true_A = y_true_A.permute(0,2,1)
