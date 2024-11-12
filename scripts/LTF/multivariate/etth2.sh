@@ -9,11 +9,11 @@ data_path_name=ETTh2.csv
 model_id_name=ETTh2
 data_name=ETTh2
 
-for model_name in DLinear
+for model_name in LTF
 do
-for seq_len in 96 192 336 512 720 1440
+for seq_len in 512
 do
-for pred_len in 24 48 96 192 336 512 720
+for pred_len in 96 192 336 720
 do
   python -u run_longExp.py \
     --is_training 1 \
@@ -25,7 +25,6 @@ do
     --features M \
     --seq_len $seq_len \
     --pred_len $pred_len \
-    --period_len 24 \
     --enc_in 7 \
     --train_epochs 30 \
     --patience 5 \
