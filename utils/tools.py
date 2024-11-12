@@ -126,12 +126,14 @@ def test_params_flop(model,x_shape):
         return macs, params
     
 class WaveletMSELoss(nn.Module):
-    def __init__(self):
+    def __init__(self, alpha=0.3, beta=1.0):
         super(WaveletMSELoss, self).__init__()
         self.low_pass_filter = torch.tensor([1, 1], dtype=torch.float32) / math.sqrt(2)
         self.high_pass_filter = torch.tensor([-1, 1], dtype=torch.float32) / math.sqrt(2)
-        self.loss_A = nn.MSELoss()
+        self.loss_A = nn.L1Loss()
         self.loss_B = nn.MSELoss()
+        self.alpha = alpha
+        self.beta = beta
 
     def forward(self, y_pred, y_true):
         batch, length, channel = y_true.shape
@@ -154,7 +156,7 @@ class WaveletMSELoss(nn.Module):
         y_pred_D = y_pred_D.permute(0,2,1)
         y_true_D = y_true_D.permute(0,2,1)
 
-        total_loss = (3.0 * self.loss_A(y_pred_A, y_true_A) + self.loss_B(y_pred_D, y_true_D))/4.0
+        total_loss = self.alpha * self.loss_A(y_pred_A, y_true_A) + self.beta * self.loss_B(y_pred_D, y_true_D)
 
         return total_loss
 
