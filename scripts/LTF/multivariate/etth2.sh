@@ -4,14 +4,14 @@ fi
 
 
 
+model_name=LTF
+
 root_path_name=./dataset/
 data_path_name=ETTh2.csv
 model_id_name=ETTh2
 data_name=ETTh2
 
-model_name = LTF
-
-for seq_len in 512
+for seq_len in 336 512
 do
 for pred_len in 96 192 336 720
 do
