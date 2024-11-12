@@ -101,7 +101,7 @@ class Model(nn.Module):
         #                            bias=True)
         self.layer_lo = AnotherLinear(in_features=in_len,
                                       out_features=self.pred_len,
-                                      rank=35)
+                                      rank=8)
 
 
 

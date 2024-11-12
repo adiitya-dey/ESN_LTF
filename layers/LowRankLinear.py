@@ -22,16 +22,20 @@ class AnotherLinear(nn.Module):
         nn.init.orthogonal_(self.A)
         self.A = nn.Parameter(self.A)
 
-        self.B = torch.empty(out_features, out_features)
-        nn.init.kaiming_uniform_(self.B)
-        self.B = nn.Parameter(self.B)
+        self.Ba = torch.empty(out_features, self.rank)
+        nn.init.kaiming_uniform_(self.Ba)
+        self.Ba = nn.Parameter(self.Ba)
+
+        self.Bb = torch.empty(self.rank, out_features)
+        nn.init.kaiming_uniform_(self.Bb)
+        self.Bb = nn.Parameter(self.Bb)
         
        
 
     
 
     def forward(self, x):
-        out = x @ self.A @ self.B
+        out = x @ self.A @ self.Ba @ self.Bb
        
         # Add bias if applicable
         if self.bias:
