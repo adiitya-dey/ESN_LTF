@@ -24,9 +24,9 @@ class AnotherLinear(nn.Module):
         self.V = torch.empty(out_features, self.rank)
         nn.init.orthogonal_(self.V)
 
-        wS = torch.abs(torch.empty(self.rank))
-        nn.init.uniform_(wS, a=0.1, b=1.0)  # Initialize with positive values
-        self.S = nn.Parameter(torch.diag(wS))
+        wS = torch.abs(torch.empty(self.rank, self.rank))
+        nn.init.constant(wS, 1/self.rank)  # Initialize with positive values
+        self.S = nn.Parameter(wS)
     
 
     def forward(self, x):
