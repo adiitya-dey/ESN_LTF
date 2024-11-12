@@ -20,6 +20,7 @@ class AnotherLinear(nn.Module):
 
         self.A = torch.empty(in_features, out_features)
         nn.init.orthogonal_(self.A)
+        self.A = nn.Parameter(self.A)
 
         self.B = torch.empty(out_features, out_features)
         nn.init.kaiming_uniform_(self.B)
