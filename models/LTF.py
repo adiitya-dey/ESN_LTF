@@ -18,7 +18,7 @@ class DCT(Function):
             # Convert back to PyTorch tensor
             output = torch.from_numpy(transformed_np).to(input.device)
             return output
-        
+
         @staticmethod
         def backward(ctx, grad_output):
             # Convert gradient to NumPy array
@@ -50,7 +50,7 @@ class IDCT(Function):
         # Convert back to PyTorch tensor
         grad_input = torch.from_numpy(grad_input_np).to(grad_output.device)
         return grad_input
-    
+
 
 class FFN(nn.Module):
     def __init__(self, input_size, hidden_size, output_size):
@@ -73,15 +73,12 @@ class Model(nn.Module):
         super(Model, self).__init__()
         self.seq_len = configs.seq_len
         self.pred_len = configs.pred_len
-        
+
         self.channels = configs.enc_in
 
-        self.window = 6
-        
         self.low_pass_filter = torch.tensor([1, 1], dtype=torch.float32) / math.sqrt(2)
 
         self.low_pass_filter = self.low_pass_filter.reshape(1,1,-1).repeat(self.channels, 1, 1)
-
 
         if (self.seq_len%2)!=0:
             in_len = self.seq_len//2 + 1
@@ -89,12 +86,11 @@ class Model(nn.Module):
             in_len = self.seq_len//2
 
          ## Create DCT matrix
-        identity_mat = np.eye(in_len)
-        dct_mat = dct(identity_mat, type=2, axis=0, norm="ortho")
-        self.dct_matrix = torch.tensor(dct_mat, dtype=torch.float)
+        # identity_mat = np.eye(in_len)
+        # dct_mat = dct(identity_mat, type=2, axis=0, norm="ortho")
+        # self.dct_matrix = torch.tensor(dct_mat, dtype=torch.float)
 
-        self.conv_1x1 = nn.Conv1d(in_channels=self.channels, out_channels=self.channels, kernel_size=1, groups=self.channels, bias=False)
-        # self.layer_lo = nn.Linear(in_len,self.pred_len)
+        self.layer_lo = nn.Linear(in_len,self.pred_len)
         # self.layer_lo = ThinLinear(in_features=in_len,
         #                            out_features=self.pred_len,
         #                            rank=35,
@@ -103,9 +99,9 @@ class Model(nn.Module):
         #                            out_features=self.pred_len,
         #                            rank=35,
         #                            bias=True)
-        self.layer_lo = ReducedLinear(in_features=in_len,
-                                      out_features=self.pred_len,
-                                      rank=35,)
+        # self.layer_lo = ReducedLinear(in_features=in_len,
+        #                               out_features=self.pred_len,
+        #                               rank=35,)
 
 
 
@@ -120,25 +116,21 @@ class Model(nn.Module):
 
         if (self.seq_len%2)!=0:
             x = F.pad(x, (0, 1))
-            
-        x = self.conv_1x1(x)
+
         ## Haar decomposition
         x = F.conv1d(input=x, weight=self.low_pass_filter, stride=2, groups=self.channels)
 
         ## Cosine Transform
         x = DCT.apply(x) / x.shape[-1]
 
-        
-
         ## Prediction
         out = self.layer_lo(x)
 
-
         out = out + seq_mean
-        
+
         return out.permute(0,2,1) # [Batch, Output length, Channel]
 
 
     def step(self):
-        self.layer_lo.step()
-        # pass
+        # self.layer_lo.step()
+        pass
