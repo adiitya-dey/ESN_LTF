@@ -8,26 +8,26 @@ import math
 
 from layers.LowRankLinear import ThinLinear, ReducedLinear, AnotherLinear
 
-class DCT(Function):
-        @staticmethod
-        def forward(ctx, input):
-            # Convert PyTorch tensor to NumPy array
-            input_np = input.cpu().numpy()
-            # Apply DCT using scipy
-            transformed_np = dct(input_np, type=2, norm="ortho", axis=-1, orthogonalize=True)
-            # Convert back to PyTorch tensor
-            output = torch.from_numpy(transformed_np).to(input.device)
-            return output
+# class DCT(Function):
+#         @staticmethod
+#         def forward(ctx, input):
+#             # Convert PyTorch tensor to NumPy array
+#             input_np = input.cpu().numpy()
+#             # Apply DCT using scipy
+#             transformed_np = dct(input_np, type=2, norm="ortho", axis=-1, orthogonalize=True)
+#             # Convert back to PyTorch tensor
+#             output = torch.from_numpy(transformed_np).to(input.device)
+#             return output
 
-        @staticmethod
-        def backward(ctx, grad_output):
-            # Convert gradient to NumPy array
-            grad_output_np = grad_output.cpu().numpy()
-            # Apply IDCT using scipy
-            grad_input_np = idct(grad_output_np, type=2, norm='ortho', axis=-1, orthogonalize=True)
-            # Convert back to PyTorch tensor
-            grad_input = torch.from_numpy(grad_input_np).to(grad_output.device)
-            return grad_input
+#         @staticmethod
+#         def backward(ctx, grad_output):
+#             # Convert gradient to NumPy array
+#             grad_output_np = grad_output.cpu().numpy()
+#             # Apply IDCT using scipy
+#             grad_input_np = idct(grad_output_np, type=2, norm='ortho', axis=-1, orthogonalize=True)
+#             # Convert back to PyTorch tensor
+#             grad_input = torch.from_numpy(grad_input_np).to(grad_output.device)
+#             return grad_input
 
 
 class IDCT(Function):
@@ -85,12 +85,12 @@ class Model(nn.Module):
         else:
             in_len = self.seq_len//2
 
-         ## Create DCT matrix
-        # identity_mat = np.eye(in_len)
-        # dct_mat = dct(identity_mat, type=2, axis=0, norm="ortho")
-        # self.dct_matrix = torch.tensor(dct_mat, dtype=torch.float)
+        ## Create DCT matrix
+        identity_mat = np.eye(in_len)
+        dct_mat = dct(identity_mat, type=2, axis=0, norm="ortho")
+        self.dct_matrix = torch.tensor(dct_mat, dtype=torch.float)
 
-        # self.layer_lo = nn.Linear(in_len,self.pred_len)
+        self.layer_lo = nn.Linear(in_len,self.pred_len)
         # self.layer_lo = ThinLinear(in_features=in_len,
         #                            out_features=self.pred_len,
         #                            rank=35,
@@ -99,9 +99,9 @@ class Model(nn.Module):
         #                            out_features=self.pred_len,
         #                            rank=35,
         #                            bias=True)
-        self.layer_lo = AnotherLinear(in_features=in_len,
-                                      out_features=self.pred_len,
-                                      rank=8)
+        # self.layer_lo = AnotherLinear(in_features=in_len,
+        #                               out_features=self.pred_len,
+        #                               rank=8)
 
 
 
@@ -121,7 +121,7 @@ class Model(nn.Module):
         x = F.conv1d(input=x, weight=self.low_pass_filter, stride=2, groups=self.channels)
 
         ## Cosine Transform
-        x = DCT.apply(x) / x.shape[-1]
+        x = x @ self.dct_matrix / x.shape[-1]
 
         ## Prediction
         out = self.layer_lo(x)
