@@ -6,7 +6,7 @@ from torch.autograd import Function
 from scipy.fft import dct, idct
 import math
 
-from layers.LowRankLinear import ThinLinear, ReducedVanillaLinear, ReducedLinear
+from layers.LowRankLinear import ThinLinear, ReducedVanillaLinear, ReducedLinear, AnotherLinear
 
 class DCT(Function):
         @staticmethod
@@ -90,7 +90,7 @@ class Model(nn.Module):
         # dct_mat = dct(identity_mat, type=2, axis=0, norm="ortho")
         # self.dct_matrix = torch.tensor(dct_mat, dtype=torch.float)
 
-        self.layer_lo = nn.Linear(in_len,self.pred_len)
+        # self.layer_lo = nn.Linear(in_len,self.pred_len)
         # self.layer_lo = ThinLinear(in_features=in_len,
         #                            out_features=self.pred_len,
         #                            rank=35,
@@ -99,9 +99,9 @@ class Model(nn.Module):
         #                            out_features=self.pred_len,
         #                            rank=35,
         #                            bias=True)
-        # self.layer_lo = ReducedLinear(in_features=in_len,
-        #                               out_features=self.pred_len,
-        #                               rank=35,)
+        self.layer_lo = AnotherLinear(in_features=in_len,
+                                      out_features=self.pred_len,
+                                      rank=35)
 
 
 
