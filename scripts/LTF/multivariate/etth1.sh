@@ -9,7 +9,7 @@ data_path_name=ETTh1.csv
 model_id_name=ETTh1
 data_name=ETTh1
 
-for seq_len in 336
+for seq_len in 512
 do
 for pred_len in 96 192 336 720
 do
