@@ -130,8 +130,7 @@ class WaveletMSELoss(nn.Module):
         super(WaveletMSELoss, self).__init__()
         self.low_pass_filter = torch.tensor([1, 1], dtype=torch.float32) / math.sqrt(2)
         self.high_pass_filter = torch.tensor([-1, 1], dtype=torch.float32) / math.sqrt(2)
-        self.loss_A = nn.MSELoss()
-        self.loss_B = nn.MSELoss()
+        self.criterion = nn.MSELoss()
         self.alpha = alpha
         self.beta = beta
 
@@ -156,8 +155,10 @@ class WaveletMSELoss(nn.Module):
         y_pred_D = y_pred_D.permute(0,2,1)
         y_true_D = y_true_D.permute(0,2,1)
 
-        total_loss = self.alpha * self.loss_A(y_pred_A, y_true_A) + self.beta * self.loss_B(y_pred_D, y_true_D)
+        loss_approx = self.criterion(y_pred_A, y_true_A)
+        loss_detail = self.criterion(y_pred_D, y_true_D)
 
+        total_loss = self.alpha * loss_approx + self.beta * loss_detail
         return total_loss
 
 
