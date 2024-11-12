@@ -20,12 +20,12 @@ class AnotherLinear(nn.Module):
 
         wU = torch.empty(in_features, self.rank)
         nn.init.orthogonal_(wU)
-        self.U = nn.Parameter(wU)
+        self.U = wU
         
 
         wV = torch.empty(self.rank, out_features)
         nn.init.orthogonal_(wV)
-        self.V = nn.Parameter(wV)
+        self.V = wV
 
         wS = torch.abs(torch.empty(self.rank, self.rank))
         nn.init.constant_(wS, 0)  # Initialize with positive values
@@ -41,8 +41,12 @@ class AnotherLinear(nn.Module):
             out = out + self.b
         return out
     
+    @torch.no_grad()
     def step(self):
-        pass
+        P, d, Q = torch.linalg.svd(self.S.data)
+        self.U = self.U @ P
+        self.V = Q @ self.V
+        self.S.data = d
 
 #######################################
 
