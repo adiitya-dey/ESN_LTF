@@ -137,7 +137,7 @@ class WaveletMSELoss(nn.Module):
         batch, length, channel = y_true.shape
 
         low_pass = self.low_pass_filter.reshape(1,1,-1).repeat(channel, 1, 1)
-        high_pass = self.low_pass_filter.reshape(1,1,-1).repeat(channel, 1, 1)
+        high_pass = self.high_pass_filter.reshape(1,1,-1).repeat(channel, 1, 1)
 
         y_pred = y_pred.permute(0,2,1)
         y_true = y_true.permute(0,2,1)
@@ -155,7 +155,7 @@ class WaveletMSELoss(nn.Module):
         y_true_D = y_true_D.permute(0,2,1)
 
         total_loss = self.loss_A(y_pred_A, y_true_A) + self.loss_B(y_pred_D, y_true_D)
-        
+
         return total_loss
 
 
