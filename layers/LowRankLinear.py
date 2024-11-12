@@ -17,12 +17,14 @@ class AnotherLinear(nn.Module):
         else:
             self.b = None
 
-        self.U = torch.empty(in_features, self.rank)
-        nn.init.orthogonal_(self.U)
+        wU = torch.empty(in_features, self.rank)
+        nn.init.orthogonal_(wU)
+        self.U = nn.Parameter(wU)
         
 
-        self.V = torch.empty(out_features, self.rank)
-        nn.init.orthogonal_(self.V)
+        wV = torch.empty(out_features, self.rank)
+        nn.init.orthogonal_(wV)
+        self.V = nn.Parameter(self.V)
 
         wS = torch.abs(torch.empty(self.rank, self.rank))
         nn.init.constant_(wS, 0)  # Initialize with positive values
