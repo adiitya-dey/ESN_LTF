@@ -26,7 +26,7 @@ do
     --enc_in 7 \
     --train_epochs 50 \
     --patience 6 \
-    --test-flop True \
-    --itr 1 --batch_size 32 --learning_rate 0.001
+    --test_flop \
+    --itr 1 --batch_size 32 --learning_rate 0.01
 done
 done
