@@ -126,7 +126,7 @@ def test_params_flop(model,x_shape):
         return macs, params
     
 class WaveletMSELoss(nn.Module):
-    def __init__(self, alpha=0.4, beta=1.0):
+    def __init__(self, alpha=1.0, beta=3.0):
         super(WaveletMSELoss, self).__init__()
         self.low_pass_filter = torch.tensor([1, 1], dtype=torch.float32) / math.sqrt(2)
         self.high_pass_filter = torch.tensor([-1, 1], dtype=torch.float32) / math.sqrt(2)
