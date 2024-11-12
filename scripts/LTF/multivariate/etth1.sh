@@ -9,7 +9,7 @@ data_path_name=ETTh1.csv
 model_id_name=ETTh1
 data_name=ETTh1
 
-for seq_len in 512 336
+for seq_len in 336
 do
 for pred_len in 96 192 336 720
 do
@@ -26,6 +26,7 @@ do
     --enc_in 7 \
     --train_epochs 50 \
     --patience 6 \
+    --test-flop True \
     --itr 1 --batch_size 32 --learning_rate 0.001
 done
 done

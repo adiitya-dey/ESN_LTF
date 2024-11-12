@@ -290,7 +290,7 @@ class Exp_Main(Exp_Basic):
                     visual(gt, pd, os.path.join(folder_path, str(i) + '.pdf'))
 
         if self.args.test_flop:
-            test_params_flop(self.model, (batch_x.shape[1],batch_x.shape[2]))
+            macs, params = test_params_flop(self.model, (batch_x.shape[1],batch_x.shape[2]))
             # test_params_flop((batch_x.shape[1], batch_x.shape[2]))
             exit()
 
@@ -309,10 +309,12 @@ class Exp_Main(Exp_Basic):
             os.makedirs(folder_path)
 
         mae, mse, rmse, mape, mspe, rse, corr, smape, r2 = metric(preds, trues)
-        print('mse:{}, mae:{}, rse:{}, smape:{}, r2:{}'.format(mse, mae, rse, smape, r2))
+        print('mse:{}, mae:{}'.format(mse, mae))
         f = open("result.txt", 'a')
         f.write(setting + "  \n")
-        f.write('mse:{}, mae:{}, rse:{}, smape:{}, r2:{}'.format(mse, mae, rse, smape, r2))
+        f.write('mse:{}, mae:{} '.format(mse, mae))
+        if self.args.test_flop:
+            f.write(' macs{}, params{}'.format(macs, params))
         f.write('\n')
         f.write('\n')
         f.close()
@@ -325,7 +327,8 @@ class Exp_Main(Exp_Basic):
         # Calculate the number of trainable and non-trainable parameters
         trainable_params = sum(p.numel() for p in self.model.parameters() if p.requires_grad)
         non_trainable_params = sum(p.numel() for p in self.model.parameters() if not p.requires_grad)
-
+        
+        
         print(f"Non_trainable: {non_trainable_params} Trainable:{trainable_params}")
         f = open("parameters.txt", 'a')
         f.write(setting + "  \n")
