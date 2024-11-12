@@ -18,23 +18,19 @@ class AnotherLinear(nn.Module):
         else:
             self.b = None
 
-        wU = torch.empty(in_features, self.rank)
-        nn.init.orthogonal_(wU)
-        self.U = wU
+        self.A = torch.empty(in_features, out_features)
+        nn.init.orthogonal_(self.A)
+
+        self.B = torch.empty(out_features, out_features)
+        nn.init.kaiming_uniform_(self.B)
+        self.B = nn.Parameter(self.B)
         
-
-        wV = torch.empty(self.rank, out_features)
-        nn.init.orthogonal_(wV)
-        self.V = wV
-
-        wS = torch.abs(torch.empty(self.rank, self.rank))
-        nn.init.constant_(wS, 0)  # Initialize with positive values
-        self.S = nn.Parameter(wS)
+       
 
     
 
     def forward(self, x):
-        out = x @ self.U @ self.S @ self.V
+        out = x @ self.A @ self.B
        
         # Add bias if applicable
         if self.bias:
@@ -43,10 +39,11 @@ class AnotherLinear(nn.Module):
     
     @torch.no_grad()
     def step(self):
-        P, d, Q = torch.linalg.svd(self.S.data)
-        self.U = self.U @ P
-        self.V = Q @ self.V
-        self.S.data = d
+        # P, d, Q = torch.linalg.svd(self.S.data)
+        # self.U = self.U @ P
+        # self.V = Q @ self.V
+        # self.S.data = d
+        pass
 
 #######################################
 
