@@ -6,7 +6,7 @@ from torch.autograd import Function
 from scipy.fft import dct, idct
 import math
 
-from layers.LowRankLinear import ThinLinear, ReducedVanillaLinear, ReducedLinear, AnotherLinear
+from layers.LowRankLinear import ThinLinear, ReducedLinear, AnotherLinear
 
 class DCT(Function):
         @staticmethod
