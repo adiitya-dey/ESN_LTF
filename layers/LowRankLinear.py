@@ -30,13 +30,10 @@ class AnotherLinear(nn.Module):
         nn.init.constant_(wS, 0)  # Initialize with positive values
         self.S = nn.Parameter(wS)
 
-        self.W = torch.empty(in_features, out_features)
-        nn.init.kaiming_uniform_(self.W)
-        self.W = nn.Parameter(self.W)
     
 
     def forward(self, x):
-        out = x @ self.W 
+        out = x @ self.U @ self.S @ self.V.T
        
         # Add bias if applicable
         if self.bias:
