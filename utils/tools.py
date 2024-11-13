@@ -133,6 +133,7 @@ class WaveletMSELoss(nn.Module):
         self.criterion = nn.MSELoss()
         self.alpha = alpha
         self.beta = beta
+        self.level= 2
 
     def forward(self, y_pred, y_true):
         batch, length, channel = y_true.shape
@@ -143,22 +144,30 @@ class WaveletMSELoss(nn.Module):
         y_pred = y_pred.permute(0,2,1)
         y_true = y_true.permute(0,2,1)
 
-        y_pred_A = F.conv1d(input=y_pred, weight=low_pass, stride=2, groups=channel)
-        y_true_A = F.conv1d(input=y_true, weight=low_pass, stride=2, groups=channel)
+        y_pred_A = F.conv1d(input=y_pred, weight=low_pass, stride=2, groups=channel).permute(0,2,1)
+        y_true_A = F.conv1d(input=y_true, weight=low_pass, stride=2, groups=channel).permute(0,2,1)
 
-        y_pred_D = F.conv1d(input=y_pred, weight=high_pass, stride=2, groups=channel)
-        y_true_D = F.conv1d(input=y_true, weight=high_pass, stride=2, groups=channel)
-
-        y_pred_A = y_pred_A.permute(0,2,1)
-        y_true_A = y_true_A.permute(0,2,1)
-
-        y_pred_D = y_pred_D.permute(0,2,1)
-        y_true_D = y_true_D.permute(0,2,1)
-
+        y_pred_D = F.conv1d(input=y_pred, weight=high_pass, stride=2, groups=channel).permute(0,2,1)
+        y_true_D = F.conv1d(input=y_true, weight=high_pass, stride=2, groups=channel).permute(0,2,1)
+        
         loss_approx = self.criterion(y_pred_A, y_true_A)
         loss_detail = self.criterion(y_pred_D, y_true_D)
+        total_loss = loss_approx + loss_detail
 
-        total_loss = self.alpha * loss_approx + self.beta * loss_detail
+        for i in range(self.level):
+
+            y_pred_A = F.conv1d(input=y_pred_A, weight=low_pass, stride=2, groups=channel).permute(0,2,1)
+            y_true_A = F.conv1d(input=y_true_A, weight=low_pass, stride=2, groups=channel).permute(0,2,1)
+
+            y_pred_D = F.conv1d(input=y_pred_A, weight=high_pass, stride=2, groups=channel).permute(0,2,1)
+            y_true_D = F.conv1d(input=y_true_A, weight=high_pass, stride=2, groups=channel).permute(0,2,1)
+
+            loss_approx = self.criterion(y_pred_A, y_true_A)
+            loss_detail = self.criterion(y_pred_D, y_true_D)
+            total_loss += loss_approx + loss_detail
+
+
+
         return total_loss
 
 
