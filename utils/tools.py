@@ -131,8 +131,8 @@ class WaveletMSELoss(nn.Module):
         self.low_pass_filter = torch.tensor([1, 1], dtype=torch.float32) / math.sqrt(2)
         self.high_pass_filter = torch.tensor([-1, 1], dtype=torch.float32) / math.sqrt(2)
         self.criterion = nn.MSELoss()
-        self.alpha = nn.Parameter(alpha)
-        self.beta = nn.Parameter(beta)
+        self.alpha = nn.Parameter(torch.tensor(alpha))
+        self.beta = nn.Parameter(torch.tensor(beta))
 
     def forward(self, y_pred, y_true):
         batch, length, channel = y_true.shape
