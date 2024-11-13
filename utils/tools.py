@@ -126,12 +126,11 @@ def test_params_flop(model,x_shape):
         return macs, params
     
 class WaveletMSELoss(nn.Module):
-    def __init__(self, alpha=10.0, beta=1.0):
+    def __init__(self, alpha=1.0, beta=1.0):
         super(WaveletMSELoss, self).__init__()
-        self.low_pass_filter = torch.tensor([1, 1], dtype=torch.float32) / math.sqrt(2)
-        self.high_pass_filter = torch.tensor([-1, 1], dtype=torch.float32) / math.sqrt(2)
-        self.criterion1 = nn.MSELoss()
-        self.criterion2 = nn.L1Loss()
+        self.low_pass_filter = torch.tensor([1, 1, 1, 1], dtype=torch.float32) / math.sqrt(4)
+        self.high_pass_filter = torch.tensor([1,-1, 1, -1], dtype=torch.float32) / math.sqrt(4)
+        self.criterion = nn.MSELoss()
         self.alpha = nn.Parameter(torch.tensor(alpha))
         self.beta = nn.Parameter(torch.tensor(beta))
 
@@ -141,17 +140,19 @@ class WaveletMSELoss(nn.Module):
         low_pass = self.low_pass_filter.reshape(1,1,-1).repeat(channel, 1, 1)
         high_pass = self.high_pass_filter.reshape(1,1,-1).repeat(channel, 1, 1)
 
-        y_pred = y_pred.permute(0,2,1)
-        y_true = y_true.permute(0,2,1)
+        y_pred = F.pad(y_pred.permute(0,2,1), (0,3))
+        y_true = F.pad(y_true.permute(0,2,1), (0,3))
 
-        y_pred_A = F.conv1d(input=y_pred, weight=low_pass, stride=2, groups=channel)
-        y_true_A = F.conv1d(input=y_true, weight=low_pass, stride=2, groups=channel)
-
-        y_pred_D = F.conv1d(input=y_pred, weight=high_pass, stride=2, groups=channel)
-        y_true_D = F.conv1d(input=y_true, weight=high_pass, stride=2, groups=channel)
         
-        loss_approx = self.criterion2(y_pred_A.permute(0,2,1), y_true_A.permute(0,2,1))
-        loss_detail = self.criterion1(y_pred_D.permute(0,2,1), y_true_D.permute(0,2,1))
+
+        y_pred_A = F.conv1d(input=y_pred, weight=low_pass, stride=1, groups=channel)
+        y_true_A = F.conv1d(input=y_true, weight=low_pass, stride=1, groups=channel)
+
+        y_pred_D = F.conv1d(input=y_pred, weight=high_pass, stride=1, groups=channel)
+        y_true_D = F.conv1d(input=y_true, weight=high_pass, stride=1, groups=channel)
+        
+        loss_approx = self.criterion(y_pred_A.permute(0,2,1), y_true_A.permute(0,2,1))
+        loss_detail = self.criterion(y_pred_D.permute(0,2,1), y_true_D.permute(0,2,1))
         total_loss = self.alpha * loss_approx + self.beta * loss_detail
 
         return total_loss
