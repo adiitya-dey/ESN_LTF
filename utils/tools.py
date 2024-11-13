@@ -131,9 +131,8 @@ class WaveletMSELoss(nn.Module):
         self.low_pass_filter = torch.tensor([1, 1], dtype=torch.float32) / math.sqrt(2)
         self.high_pass_filter = torch.tensor([-1, 1], dtype=torch.float32) / math.sqrt(2)
         self.criterion = nn.MSELoss()
-        self.alpha = alpha
-        self.beta = beta
-        self.level= 2
+        self.alpha = nn.Parameter(alpha)
+        self.beta = nn.Parameter(beta)
 
     def forward(self, y_pred, y_true):
         batch, length, channel = y_true.shape
@@ -152,21 +151,7 @@ class WaveletMSELoss(nn.Module):
         
         loss_approx = self.criterion(y_pred_A.permute(0,2,1), y_true_A.permute(0,2,1))
         loss_detail = self.criterion(y_pred_D.permute(0,2,1), y_true_D.permute(0,2,1))
-        total_loss = loss_approx + loss_detail
-
-        for i in range(self.level):
-
-            y_pred_A = F.conv1d(input=y_pred_A, weight=low_pass, stride=2, groups=channel)
-            y_true_A = F.conv1d(input=y_true_A, weight=low_pass, stride=2, groups=channel)
-
-            y_pred_D = F.conv1d(input=y_pred_A, weight=high_pass, stride=2, groups=channel)
-            y_true_D = F.conv1d(input=y_true_A, weight=high_pass, stride=2, groups=channel)
-
-            loss_approx = self.criterion(y_pred_A.permute(0,2,1), y_true_A.permute(0,2,1))
-            loss_detail = self.criterion(y_pred_D.permute(0,2,1), y_true_D.permute(0,2,1))
-            total_loss += loss_approx + loss_detail
-
-
+        total_loss = self.alpha * loss_approx + self.beta * loss_detail
 
         return total_loss
 
