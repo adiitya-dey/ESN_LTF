@@ -151,7 +151,7 @@ class WaveletMSELoss(nn.Module):
         
         loss_approx = self.criterion2(y_pred_A.permute(0,2,1), y_true_A.permute(0,2,1))
         loss_detail = self.criterion1(y_pred_D.permute(0,2,1), y_true_D.permute(0,2,1))
-        total_loss = 1.0 * loss_approx + 3.0 * loss_detail
+        total_loss = 1.0 * loss_approx + 1.0 * loss_detail
 
         return total_loss
 
