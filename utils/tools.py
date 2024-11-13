@@ -156,11 +156,11 @@ class WaveletMSELoss(nn.Module):
 
         for i in range(self.level):
 
-            y_pred_A = F.conv1d(input=y_pred_A, weight=low_pass, stride=2, groups=channel).permute(0,2,1)
-            y_true_A = F.conv1d(input=y_true_A, weight=low_pass, stride=2, groups=channel).permute(0,2,1)
+            y_pred_A = F.conv1d(input=y_pred_A, weight=low_pass, stride=2, groups=channel)
+            y_true_A = F.conv1d(input=y_true_A, weight=low_pass, stride=2, groups=channel)
 
-            y_pred_D = F.conv1d(input=y_pred_A, weight=high_pass, stride=2, groups=channel).permute(0,2,1)
-            y_true_D = F.conv1d(input=y_true_A, weight=high_pass, stride=2, groups=channel).permute(0,2,1)
+            y_pred_D = F.conv1d(input=y_pred_A, weight=high_pass, stride=2, groups=channel)
+            y_true_D = F.conv1d(input=y_true_A, weight=high_pass, stride=2, groups=channel)
 
             loss_approx = self.criterion(y_pred_A.permute(0,2,1), y_true_A.permute(0,2,1))
             loss_detail = self.criterion(y_pred_D.permute(0,2,1), y_true_D.permute(0,2,1))
