@@ -140,6 +140,9 @@ class WaveletMSELoss(nn.Module):
         low_pass = self.low_pass_filter.reshape(1,1,-1).repeat(channel, 1, 1)
         high_pass = self.high_pass_filter.reshape(1,1,-1).repeat(channel, 1, 1)
 
+        y_pred = y_pred.permute(0,2,1)
+        y_true = y_true.permute(0,2,1)
+
         y_pred_A = F.conv1d(input=y_pred, weight=low_pass, stride=2, groups=channel)
         y_true_A = F.conv1d(input=y_true, weight=low_pass, stride=2, groups=channel)
 
