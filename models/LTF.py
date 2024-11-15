@@ -104,6 +104,8 @@ class Model(nn.Module):
                                  stride=1,
                                  groups=self.channels)
         
+        self.layer_map = nn.Linear(self.pred_len, self.pred_len)
+        
         # self.layer_lo = ThinLinear(in_features=in_len,
         #                            out_features=self.pred_len,
         #                            rank=35,
@@ -136,11 +138,13 @@ class Model(nn.Module):
         ## Cosine Transform
         x = DCT.apply(x) / x.shape[-1]
 
-        x = self.conv1x1_1(x)
+
         ## Prediction
         out = self.layer_lo(x)
 
         out = self.conv1x1_2(out)
+
+        out = self.layer_map(out)
         # out = self.conv1x1(out)
 
         out = out + seq_mean
