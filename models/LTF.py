@@ -128,7 +128,7 @@ class Model(nn.Module):
         x = F.conv1d(input=x, weight=self.low_pass_filter, stride=2, groups=self.channels)
 
         ## Cosine Transform
-        x = DCT.apply(x)
+        x = DCT.apply(x) / x.shape[-1]
 
         ## Prediction
         out = self.layer_lo(x)
