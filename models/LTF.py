@@ -80,9 +80,19 @@ class Model(nn.Module):
 
         self.low_pass_filter = self.low_pass_filter.reshape(1,1,-1).repeat(self.channels, 1, 1)
 
-        self.smooth_filter = torch.tensor([1,1,1,1], dtype=torch.float32) / math.sqrt(4)
+        self.conv_1 = nn.Conv1d(in_channels=self.channels,
+                                out_channels=self.channels,
+                                kernel_size=2,
+                                groups=self.channels,
+                                stride=2)
+        
+        self.conv_2 = nn.Conv1d(in_channels=self.channels,
+                                out_channels=self.channels,
+                                kernel_size=4,
+                                groups=self.channels,
+                                padding="same",
+                                stride=1)
 
-        self.smooth_filter = self.smooth_filter.reshape(1,1,-1).repeat(self.channels, 1, 1)
 
         if (self.seq_len%2)!=0:
             in_len = self.seq_len//2 + 1
@@ -117,14 +127,19 @@ class Model(nn.Module):
         seq_mean = torch.mean(x, axis=-1, keepdim=True)
         x = x - seq_mean
 
+        x = self.conv_2(x)
+        x = F.pad(x,(0,1))
+        x = self.conv_1(x)
         
-        x = F.pad(x,(0,3))
-        #Stationary Wavelet Transform for smoothening.
-        x = F.conv1d(input=x, weight=self.smooth_filter, stride=1, groups=self.channels)
+        # #Stationary Wavelet Transform for smoothening.
+        # x = F.pad(x,(0,1))
+        # x = F.conv1d(input=x, weight=self.low_pass_filter, stride=1, groups=self.channels)
+
  
-        ## Haar decomposition
-        x = F.pad(x, (0,1))
-        x = F.conv1d(input=x, weight=self.low_pass_filter, stride=2, groups=self.channels)
+        # ## Haar decomposition
+        # x = F.pad(x, (0,1))
+        # x = F.conv1d(input=x, weight=self.low_pass_filter, stride=2, groups=self.channels)
+
 
 
         ## Cosine Transform
