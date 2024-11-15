@@ -135,7 +135,7 @@ class Model(nn.Module):
 
         # out = self.conv1x1(out)
 
-        out = out.permute(0,2,1) + seq_mean
+        out = out + seq_mean
 
         return out.permute(0,2,1) # [Batch, Output length, Channel]
 
