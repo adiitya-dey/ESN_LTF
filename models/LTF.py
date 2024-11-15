@@ -92,7 +92,12 @@ class Model(nn.Module):
 
         self.layer_lo = nn.Linear(in_len,self.pred_len)
 
-        self.layer_ch = nn.Linear(self.channels, self.channels)
+        self.conv1x1 = nn.Conv1d(in_channels=self.channels,
+                                 out_channels=self.channels,
+                                 kernel_size=1,
+                                 stride=1,
+                                 groups=self.channels)
+        
         # self.layer_lo = ThinLinear(in_features=in_len,
         #                            out_features=self.pred_len,
         #                            rank=35,
@@ -128,7 +133,8 @@ class Model(nn.Module):
         ## Prediction
         out = self.layer_lo(x)
 
-        out = self.layer_ch(out.permute(0,2,1))
+        out = self.conv1x1(out)
+        
         out = out.permute(0,2,1) + seq_mean
 
         return out.permute(0,2,1) # [Batch, Output length, Channel]
