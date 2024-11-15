@@ -1,6 +1,6 @@
 from data_provider.data_factory import data_provider
 from exp.exp_basic import Exp_Basic
-from models import DLinear
+from models import LTF
 from utils.tools import EarlyStopping, adjust_learning_rate, visual, test_params_flop, WaveletMSELoss
 from utils.metrics import metric
 
@@ -27,10 +27,7 @@ class Exp_Main(Exp_Basic):
 
     def _build_model(self):
         model_dict = {
-            'LTF': DLinear,
-            # 'DLinear' : DLinear,
-            # 'HaarDLinear': HaarDLinear
-
+            'LTF': LTF,
         }
         model = model_dict[self.args.model].Model(self.args).float()
 
