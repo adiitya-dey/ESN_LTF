@@ -2,10 +2,6 @@ import numpy as np
 import torch
 import matplotlib.pyplot as plt
 import time
-import torch.nn as nn
-import math
-import torch.nn.functional as F
-
 
 plt.switch_backend('agg')
 
@@ -20,7 +16,7 @@ def adjust_learning_rate(optimizer, scheduler, epoch, args, printout=True):
             10: 5e-7, 15: 1e-7, 20: 5e-8
         }
     elif args.lradj == 'type3':
-        lr_adjust = {epoch: args.learning_rate if epoch < 3 else args.learning_rate * (0.8 ** ((epoch - 3) // 1))}
+        lr_adjust = {epoch: args.learning_rate if epoch < 3 else args.learning_rate * (0.9 ** ((epoch - 3) // 1))}
     elif args.lradj == 'constant':
         lr_adjust = {epoch: args.learning_rate}
     elif args.lradj == '3':
@@ -107,20 +103,14 @@ def test_params_flop(model,x_shape):
     """
     If you want to thest former's flop, you need to give default value to inputs in model.forward(), the following code can only pass one argument to forward()
     """
-    # model_params = 0
-    # for parameter in model.parameters():
-    #     model_params += parameter.numel()
-    #     print('INFO: Trainable parameter count: {:.2f}M'.format(model_params / 1000000.0))
-    # from ptflops import get_model_complexity_info
-    # with torch.cuda.device(0):
-    #     macs, params = get_model_complexity_info(model.cuda(), x_shape, as_strings=True, print_per_layer_stat=True)
-    #     # print('Flops:' + flops)
-    #     # print('Params:' + params)
-    #     print('{:<30}  {:<8}'.format('Computational complexity: ', macs))
-    #     print('{:<30}  {:<8}'.format('Number of parameters: ', params))
-    from ptflops import get_model_complexity_info
+    model_params = 0
+    for parameter in model.parameters():
+        model_params += parameter.numel()
+        print('INFO: Trainable parameter count: {:.2f}M'.format(model_params / 1000000.0))
+    from ptflops import get_model_complexity_info    
     with torch.cuda.device(0):
-        macs, params = get_model_complexity_info(model.cuda(), x_shape, as_strings=True, print_per_layer_stat=False)
+        macs, params = get_model_complexity_info(model.cuda(), x_shape, as_strings=True, print_per_layer_stat=True)
+        # print('Flops:' + flops)
+        # print('Params:' + params)
         print('{:<30}  {:<8}'.format('Computational complexity: ', macs))
         print('{:<30}  {:<8}'.format('Number of parameters: ', params))
-        return macs, params
