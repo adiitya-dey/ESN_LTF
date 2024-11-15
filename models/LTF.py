@@ -91,6 +91,8 @@ class Model(nn.Module):
         self.dct_matrix = torch.tensor(dct_mat, dtype=torch.float)
 
         self.layer_lo = nn.Linear(in_len,self.pred_len)
+
+        self.layer_ch = nn.Linear(self.channels, self.channels)
         # self.layer_lo = ThinLinear(in_features=in_len,
         #                            out_features=self.pred_len,
         #                            rank=35,
@@ -126,7 +128,8 @@ class Model(nn.Module):
         ## Prediction
         out = self.layer_lo(x)
 
-        out = out + seq_mean
+        out = self.layer_ch(out.permute(0,2,1))
+        out = out.permute(0,2,1) + seq_mean
 
         return out.permute(0,2,1) # [Batch, Output length, Channel]
 
