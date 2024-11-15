@@ -121,7 +121,7 @@ class Model(nn.Module):
         # Cosine Transform
         x = DCT.apply(x) / x.shape[-1]
 
-        x = self.map(x)
+        x = x + self.map(x)
 
         ## Prediction
         out = self.layer_lo(x)
