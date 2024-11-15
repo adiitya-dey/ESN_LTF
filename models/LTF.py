@@ -80,31 +80,19 @@ class Model(nn.Module):
 
         self.low_pass_filter = self.low_pass_filter.reshape(1,1,-1).repeat(self.channels, 1, 1)
 
+        self.smooth_filter = torch.tensor([1,1,1,1], dtype=torch.float32) / math.sqrt(4)
+
+        self.smooth_filter = self.smooth_filter.reshape(1,1,-1).repeat(self.channels, 1, 1)
+
         if (self.seq_len%2)!=0:
             in_len = self.seq_len//2 + 1
         else:
             in_len = self.seq_len//2
 
-        ## Create DCT matrix
-        identity_mat = np.eye(in_len)
-        dct_mat = dct(identity_mat, type=2, axis=0, norm="ortho")
-        self.dct_matrix = torch.tensor(dct_mat, dtype=torch.float)
+
 
         self.layer_lo = nn.Linear(in_len,self.pred_len)
 
-        self.conv1x1_1 = nn.Conv1d(in_channels=self.channels,
-                                 out_channels=self.channels,
-                                 kernel_size=1,
-                                 stride=1,
-                                 groups=self.channels)
-        
-        self.conv1x1_2 = nn.Conv1d(in_channels=self.channels,
-                                 out_channels=self.channels,
-                                 kernel_size=1,
-                                 stride=1,
-                                 groups=self.channels)
-        
-        
         
         # self.layer_lo = ThinLinear(in_features=in_len,
         #                            out_features=self.pred_len,
@@ -130,13 +118,12 @@ class Model(nn.Module):
         x = x - seq_mean
 
         if (self.seq_len%2)!=0:
-            x = F.pad(x, (0, 1))
+            x = F.pad(x, (0, 3))
 
-        ## Haar decomposition
-        x = F.conv1d(input=x, weight=self.low_pass_filter, stride=1, groups=self.channels,)
-        x = F.pad(x, (0,1))
-        x = F.conv1d(input=x, weight=self.low_pass_filter, stride=1, groups=self.channels)
+        #Stationary Wavelet Transform for smoothening.
+        x = F.conv1d(input=x, weight=self.smooth_filter, stride=1, groups=self.channels)
  
+        ## Haar decomposition
         x = F.pad(x, (0,1))
         x = F.conv1d(input=x, weight=self.low_pass_filter, stride=2, groups=self.channels)
 
