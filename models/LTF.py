@@ -92,7 +92,19 @@ class Model(nn.Module):
 
         self.layer_lo = nn.Linear(in_len,self.pred_len)
 
-        self.layer_map = nn.Linear(self.pred_len, self.pred_len)
+        self.conv1x1_1 = nn.Conv1d(in_channels=self.channels,
+                                 out_channels=self.channels,
+                                 kernel_size=1,
+                                 stride=1,
+                                 groups=self.channels)
+        
+        self.conv1x1_2 = nn.Conv1d(in_channels=self.channels,
+                                 out_channels=self.channels,
+                                 kernel_size=1,
+                                 stride=1,
+                                 groups=self.channels)
+        
+        
         
         # self.layer_lo = ThinLinear(in_features=in_len,
         #                            out_features=self.pred_len,
@@ -126,6 +138,7 @@ class Model(nn.Module):
         ## Cosine Transform
         x = DCT.apply(x) / x.shape[-1]
 
+        x += self.conv1x1_1(self.conv1x1_2(x))
 
         ## Prediction
         out = self.layer_lo(x)
