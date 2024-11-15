@@ -24,8 +24,8 @@ do
     --seq_len $seq_len \
     --pred_len $pred_len \
     --enc_in 21 \
-    --train_epochs 30 \
-    --patience 5 \
+    --train_epochs 100 \
+    --patience 20 \
     --itr 1 --batch_size 32 --learning_rate 0.01
 done
 done

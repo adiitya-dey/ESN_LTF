@@ -9,7 +9,8 @@ data_path_name=ETTm1.csv
 model_id_name=ETTm1
 data_name=ETTm1
 
-seq_len=512
+for seq_len in 336 512
+do
 for pred_len in 96 192 336 720
 do
   python -u run_longExp.py \
@@ -22,9 +23,9 @@ do
     --features M \
     --seq_len $seq_len \
     --pred_len $pred_len \
-    --period_len 4 \
     --enc_in 7 \
-    --train_epochs 30 \
-    --patience 5 \
+    --train_epochs 100 \
+    --patience 20 \
     --itr 1 --batch_size 32 --learning_rate 0.01
+done
 done

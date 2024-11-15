@@ -26,9 +26,8 @@ do
     --seq_len $seq_len \
     --pred_len $pred_len \
     --enc_in 7 \
-    --train_epochs 50 \
-    --patience 6 \
-    --loss waveloss \
+    --train_epochs 100 \
+    --patience 20 \
     --itr 1 --batch_size 32 --learning_rate 0.01
 done
 done
