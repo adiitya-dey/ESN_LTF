@@ -117,9 +117,8 @@ class Model(nn.Module):
         seq_mean = torch.mean(x, axis=-1, keepdim=True)
         x = x - seq_mean
 
-        if (self.seq_len%2)!=0:
-            x = F.pad(x, (0, 3))
-
+        
+        x = F.pad(x,(0,3))
         #Stationary Wavelet Transform for smoothening.
         x = F.conv1d(input=x, weight=self.smooth_filter, stride=1, groups=self.channels)
  
