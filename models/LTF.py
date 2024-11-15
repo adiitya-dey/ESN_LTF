@@ -92,18 +92,6 @@ class Model(nn.Module):
 
         self.layer_lo = nn.Linear(in_len,self.pred_len)
 
-        self.conv1x1_1 = nn.Conv1d(in_channels=self.channels,
-                                 out_channels=self.channels,
-                                 kernel_size=1,
-                                 stride=1,
-                                 groups=self.channels)
-        
-        self.conv1x1_2 = nn.Conv1d(in_channels=self.channels,
-                                 out_channels=self.channels,
-                                 kernel_size=1,
-                                 stride=1,
-                                 groups=self.channels)
-        
         self.layer_map = nn.Linear(self.pred_len, self.pred_len)
         
         # self.layer_lo = ThinLinear(in_features=in_len,
@@ -141,8 +129,6 @@ class Model(nn.Module):
 
         ## Prediction
         out = self.layer_lo(x)
-
-        out = self.conv1x1_2(out)
 
         out = self.layer_map(out)
         # out = self.conv1x1(out)
