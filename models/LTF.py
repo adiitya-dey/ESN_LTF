@@ -134,6 +134,9 @@ class Model(nn.Module):
 
         ## Haar decomposition
         x = F.conv1d(input=x, weight=self.low_pass_filter, stride=1, groups=self.channels)
+        x = F.pad(x, (0,1))
+        x = F.conv1d(input=x, weight=self.low_pass_filter, stride=2, groups=self.channels)
+
 
         ## Cosine Transform
         x = DCT.apply(x) / x.shape[-1]
