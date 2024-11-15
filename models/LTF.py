@@ -86,8 +86,6 @@ class Model(nn.Module):
         else:
             in_len = self.seq_len//2
 
-        self.map = nn.Linear(in_len, in_len, bias=False)
-
         self.layer_lo = nn.Linear(in_len,self.pred_len)
 
         
@@ -119,9 +117,9 @@ class Model(nn.Module):
         x = F.conv1d(input=x, weight=self.low_pass_filter, stride=2, groups=self.channels)
 
         # Cosine Transform
-        x = DCT.apply(x) / x.shape[-1]
+        # x = DCT.apply(x) / x.shape[-1]
 
-        x = x + self.map(x)
+        
 
         ## Prediction
         out = self.layer_lo(x)
