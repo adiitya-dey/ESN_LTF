@@ -86,7 +86,7 @@ class Model(nn.Module):
         else:
             in_len = self.seq_len//2
 
-        self.layer_lo = nn.Linear(in_len,self.pred_len)
+        self.layer_lo = nn.Linear(self.seq_len,self.pred_len)
 
         
         # self.layer_lo = ThinLinear(in_features=in_len,
@@ -114,14 +114,10 @@ class Model(nn.Module):
         
         ## Haar decomposition
         # x = F.pad(x, (0,1))
-        x = F.conv1d(input=x, weight=self.low_pass_filter, stride=2, groups=self.channels)
-
-        batch, channel, length = x.shape
+        # x = F.conv1d(input=x, weight=self.low_pass_filter, stride=2, groups=self.channels)
 
         ##Cosine Transform
-        x = x.view(batch, channel, int(length//16), 16)
         x = DCT.apply(x) / x.shape[-1]
-        x = x.view(batch, channel, -1)
 
         
 
