@@ -116,8 +116,10 @@ class Model(nn.Module):
         # x = F.pad(x, (0,1))
         x = F.conv1d(input=x, weight=self.low_pass_filter, stride=2, groups=self.channels)
 
-        # Cosine Transform
-        # x = DCT.apply(x) / x.shape[-1]
+        ##Cosine Transform
+        x = x.view(batch, self.channels, int(512//16), 16)
+        x = DCT.apply(x) / x.shape[-1]
+        x = x.view(batch, self.channels, -1)
 
         
 
