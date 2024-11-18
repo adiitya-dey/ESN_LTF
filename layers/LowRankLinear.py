@@ -265,6 +265,7 @@ class ThinLinear(nn.Module):
         else:
           self.b = None
 
+        
     def forward(self, x):
         return ThinFunction.apply(x, self.U, self.S, self.V, self.b)
     
@@ -275,9 +276,4 @@ class ThinLinear(nn.Module):
             self.U.data, R1 = torch.linalg.qr(self.U.data)
             self.V.data, R2 = torch.linalg.qr(self.V.data)
             self.S.data = R1 @ self.S.data @ R2.T
-
-
-
-
-
 

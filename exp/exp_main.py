@@ -10,13 +10,15 @@ import torch
 import torch.nn as nn
 from torch import optim
 from torch.optim import lr_scheduler
-
 import os
 import time
 
 import warnings
 import matplotlib.pyplot as plt
 import numpy as np
+
+from fvcore.nn import FlopCountAnalysis
+from fvcore.nn import parameter_count
 
 warnings.filterwarnings('ignore')
 
@@ -50,8 +52,6 @@ class Exp_Main(Exp_Basic):
             criterion = nn.MSELoss()
         elif self.args.loss == "smooth":
             criterion = nn.SmoothL1Loss()
-        elif self.args.loss =="waveloss":
-            criterion = WaveletMSELoss()
         else:
             criterion = nn.MSELoss()
         return criterion
@@ -323,16 +323,14 @@ class Exp_Main(Exp_Basic):
 
     
     def calc_params(self, setting):
-        # Calculate the number of trainable and non-trainable parameters
-        trainable_params = sum(p.numel() for p in self.model.parameters() if p.requires_grad)
-        non_trainable_params = sum(p.numel() for p in self.model.parameters() if not p.requires_grad)
+        # Calculate the number of trainable  parameters
         
-        
-        print(f"Non_trainable: {non_trainable_params} Trainable:{trainable_params}")
+        macs = FlopCountAnalysis(self.model, (self.args.batch_size, self.args.seq_len, self.args.enc_in))
+        params = parameter_count(self.model)
         f = open("parameters.txt", 'a')
         f.write(setting + "  \n")
-        f.write('Trainable Params:{}, Non-Trainable Params:{}, Total Params:{}'.format(trainable_params, non_trainable_params, trainable_params + non_trainable_params))
-        f.write(f"rank: {self.model.layer_lo.rank}")
+        f.write(f"Total Parameters: {params['']}")
+        f.write(f"Total Macs: {macs}")
         f.write('\n')
         f.write('\n')
         f.close()

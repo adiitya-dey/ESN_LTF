@@ -28,8 +28,8 @@ parser.add_argument('--seq_len', type=int, default=96, help='input sequence leng
 parser.add_argument('--label_len', type=int, default=48, help='start token length')
 parser.add_argument('--pred_len', type=int, default=96, help='prediction sequence length')
 
-# SparseTSF
-parser.add_argument('--period_len', type=int, default=24, help='period length')
+# Haar-DCT
+parser.add_argument('--rank', type=int, default=50, help='period length')
 
 # PatchTST
 parser.add_argument('--fc_dropout', type=float, default=0.05, help='fully connected dropout')
@@ -105,7 +105,7 @@ print(args)
 
 Exp = Exp_Main
 
-if args.is_training:
+if args.is_training==1:
     for ii in range(args.itr):
         random.seed(fix_seed_list[ii])
         torch.manual_seed(fix_seed_list[ii])
@@ -135,7 +135,7 @@ if args.is_training:
             exp.predict(setting, True)
 
         torch.cuda.empty_cache()
-else:
+elif args.is_training==0:
     ii = 0
     setting = '{}_{}_{}_ft{}_sl{}_pl{}_{}_{}_seed{}'.format(
         args.model_id,
@@ -151,5 +151,19 @@ else:
     exp = Exp(args)  # set experiments
     print('>>>>>>>testing : {}<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<'.format(setting))
     exp.test(setting, test=1)
-    exp.calc_params(setting)
     torch.cuda.empty_cache()
+else:
+    ii = 0
+    setting = '{}_{}_{}_ft{}_sl{}_pl{}_{}_{}_seed{}'.format(
+        args.model_id,
+        args.model,
+        args.data,
+        args.features,
+        args.seq_len,
+        args.pred_len,
+        args.des,
+        ii,
+        fix_seed_list[ii])
+    exp = Exp(args)  # set experiments
+    print('>>>>>>>Calculating flops : {}<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<'.format(setting))
+    exp.calc_params(setting)
