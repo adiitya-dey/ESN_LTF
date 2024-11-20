@@ -90,7 +90,7 @@ class Model(nn.Module):
 
 
         ## Full Linear Layer
-        # self.layer_lo = nn.Linear(in_len,self.pred_len)
+        self.layer_lo = nn.Linear(in_len,self.pred_len)
 
         ## Feed-Forward Network
         # self.layer_lo = FFN(in_len, 32, self.pred_len)
@@ -105,9 +105,9 @@ class Model(nn.Module):
 
         ## Jonas's Low Rank
         ## Ensure to switch-off Adam Optimizer in "exp_main" train function.
-        self.layer_lo = ParallelLowRankLayer(input_size=in_len,
-                                             output_size=self.pred_len,
-                                             rank=35)
+        # self.layer_lo = ParallelLowRankLayer(input_size=in_len,
+        #                                      output_size=self.pred_len,
+        #                                      rank=35)
 
 
 
