@@ -6,7 +6,8 @@ from torch.autograd import Function
 from scipy.fft import dct, idct
 import math
 
-from layers.LowRankLinear import ThinLinear, ReducedLinear, AnotherLinear
+from layers.mylowrank import ThinLinear
+from layers.lowrank import ParallelLowRankLayer
 
 class DCT(Function):
         @staticmethod
@@ -87,20 +88,26 @@ class Model(nn.Module):
         else:
             in_len = self.seq_len//2
 
+
+        ## Full Linear Layer
         # self.layer_lo = nn.Linear(in_len,self.pred_len)
 
+        ## Feed-Forward Network
+        # self.layer_lo = FFN(in_len, 32, self.pred_len)
         
-        self.layer_lo = ThinLinear(in_features=in_len,
-                                   out_features=self.pred_len,
-                                   rank=self.rank,
-                                   bias=False)
-        # self.layer_lo = ReducedVanillaLinear(in_features=in_len,
+        ## Low Rank Self-Gradient Calculation with Adam Optimizier.
+        ## This method does not follow strict orthogonality.
+        # self.layer_lo = ThinLinear(in_features=in_len,
         #                            out_features=self.pred_len,
-        #                            rank=35,
-        #                            bias=True)
-        # self.layer_lo = AnotherLinear(in_features=in_len,
-        #                               out_features=self.pred_len,
-        #                               rank=8)
+        #                            rank=self.rank,
+        #                            bias=False)
+
+
+        ## Jonas's Low Rank
+        ## Ensure to switch-off Adam Optimizer in "exp_main" train function.
+        self.layer_lo = ParallelLowRankLayer(input_size=in_len,
+                                             output_size=self.pred_len,
+                                             rank=35)
 
 
 
@@ -122,8 +129,6 @@ class Model(nn.Module):
         ##Cosine Transform
         x = DCT.apply(x) / x.shape[-1]
 
-        
-
         ## Prediction
         out = self.layer_lo(x)
 
@@ -132,6 +137,6 @@ class Model(nn.Module):
         return out.permute(0,2,1) # [Batch, Output length, Channel]
 
 
-    def step(self):
-        # self.layer_lo.step()
+    def step(self, lr):
+        self.layer_lo.step(lr)
         pass

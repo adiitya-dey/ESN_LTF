@@ -193,8 +193,13 @@ class Exp_Main(Exp_Basic):
                 #     scaler.update()
                 # else:
                 loss.backward()
-                model_optim.step()
-                self.model.step()
+                # model_optim.step()
+
+                # Use this for mylow rank.
+                # self.model.step()
+
+                # Use this for Jonas's Low Rank.
+                self.model.step(self.args.learning_rate)
 
                 if self.args.lradj == 'TST':
                     adjust_learning_rate(model_optim, scheduler, epoch + 1, self.args, printout=False)

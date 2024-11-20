@@ -9,22 +9,12 @@ data_path_name=ETTh1.csv
 model_id_name=ETTh1
 data_name=ETTh1
 
-for seq_len in 336 512
-do
-  for pred_len in 96 192 336 720
-  do
-    # Set the rank based on seq_len
-    if [ $pred_len -eq 96 ]; then
-      rank=40
-    elif [ $pred_len -eq 192 ]; then
-      rank=50
-    elif [ $pred_len -eq 336 ]; then
-    rank=60
-    elif [ $pred_len -eq 720 ]; then
-      rank=70
+rank=50
 
-    fi
-    
+for seq_len in 512 336
+do
+for pred_len in 96 192 336 720
+do    
     python -u run_longExp.py \
       --is_training 1 \
       --root_path $root_path_name \
@@ -36,9 +26,10 @@ do
       --seq_len $seq_len \
       --pred_len $pred_len \
       --enc_in 7 \
-      --train_epochs 30 \
+      --train_epochs 50 \
       --rank $rank \
+      --patience 5 \
       --itr 1 --batch_size 32 --learning_rate 0.01
-  done
+done
 done
 
