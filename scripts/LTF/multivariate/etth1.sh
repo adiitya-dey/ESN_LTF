@@ -9,11 +9,11 @@ data_path_name=ETTh1.csv
 model_id_name=ETTh1
 data_name=ETTh1
 
-rank=16
+rank=32
 
-for seq_len in 512 336
-do
 for pred_len in 96 192 336 720
+do   
+for seq_len in 336 512
 do    
     python -u run_longExp.py \
       --is_training 1 \

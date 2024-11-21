@@ -9,12 +9,14 @@ data_path_name=ETTm1.csv
 model_id_name=ETTm1
 data_name=ETTm1
 
-rank=16
 
-for seq_len in 512 336
-do
+rank=32
+
+
 for pred_len in 96 192 336 720
-do    
+do 
+for seq_len in 336 512
+do
     python -u run_longExp.py \
       --is_training 1 \
       --root_path $root_path_name \
@@ -28,7 +30,7 @@ do
       --enc_in 7 \
       --train_epochs 100 \
       --rank $rank \
-      --patience 20 \
+      --patience 6 \
       --itr 1 --batch_size 32 --learning_rate 0.01
 done
 done
