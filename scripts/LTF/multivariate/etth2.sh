@@ -11,7 +11,7 @@ data_path_name=ETTh2.csv
 model_id_name=ETTh2
 data_name=ETTh2
 
-rank=50
+rank=8
 
 for seq_len in 512 336
 do
@@ -28,9 +28,9 @@ do
       --seq_len $seq_len \
       --pred_len $pred_len \
       --enc_in 7 \
-      --train_epochs 50 \
+      --train_epochs 100 \
       --rank $rank \
-      --patience 5 \
+      --patience 20 \
       --itr 1 --batch_size 32 --learning_rate 0.01
 done
 done

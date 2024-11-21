@@ -335,7 +335,7 @@ class Exp_Main(Exp_Basic):
         f = open("parameters.txt", 'a')
         f.write(setting + "  \n")
         f.write(f"Total Parameters: {params['']}")
-        f.write(f"Total Macs: {macs}")
+        # f.write(f"Total Macs: {macs}")
         f.write('\n')
         f.write('\n')
         f.close()

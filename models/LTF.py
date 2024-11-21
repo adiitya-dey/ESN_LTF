@@ -6,7 +6,7 @@ from torch.autograd import Function
 from scipy.fft import dct, idct
 import math
 
-from layers.mylowrank import ThinLinear
+from layers.mylowrank import ThinLinear, ABLowRank
 from layers.lowrank import ParallelLowRankLayer
 
 class DCT(Function):
@@ -102,6 +102,13 @@ class Model(nn.Module):
         #                            rank=self.rank,
         #                            bias=False)
 
+
+        ## AB Low rank Method.
+
+        self.layer_lo = ABLowRank(in_features=in_len,
+                                  out_features=self.pred_len,
+                                  rank=self.rank,
+                                  bias=True)
 
         ## Jonas's Low Rank
         ## Ensure to switch-off Adam Optimizer in "exp_main" train function.
