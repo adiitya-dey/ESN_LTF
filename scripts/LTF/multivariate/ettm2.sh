@@ -10,7 +10,7 @@ model_id_name=ETTm2
 data_name=ETTm2
 
 
-rank=32
+rank=24
 
 for pred_len in 96 192 336 720
 do   

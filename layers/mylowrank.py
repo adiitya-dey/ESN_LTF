@@ -160,6 +160,8 @@ class ABLowRank(nn.Module):
         self.in_features = in_features
         self.out_features = out_features
         self.rank= rank
+        self.r = rank
+        self.tol= 1e-2
 
         wA = torch.empty(self.in_features, self.rank)
         wB = torch.empty(self.rank, self.out_features)
@@ -174,10 +176,22 @@ class ABLowRank(nn.Module):
             self.b = None
 
     def forward(self, x):
-        out = x @ self.A
-        out = out @ self.B
+        out = x @ self.A[:,:self.r]
+        out = out @ self.B[:self.r,:]
 
         if self.b is not None:
             out += self.b
 
         return out
+    
+    # def step(self):
+    #     W = self.A @ self.B
+
+    #     for i in range(self.r, 0, -1):
+    #         W_rank = self.A[:,:i] @ self.B[:i,:]
+    #         norm = torch.linalg.norm(W-W_rank, ord="fro")
+    #         if norm > self.tol:
+    #             self.r = i-1
+    #             break
+    #         print(f"rank===={self.r}")
+

@@ -11,7 +11,7 @@ data_path_name=ETTh2.csv
 model_id_name=ETTh2
 data_name=ETTh2
 
-rank=32
+rank=24
 
 for pred_len in 96 192 336 720
 do   

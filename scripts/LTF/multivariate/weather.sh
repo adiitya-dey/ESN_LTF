@@ -9,7 +9,7 @@ data_path_name=weather.csv
 model_id_name=weather
 data_name=custom
 
-rank=32
+rank=24
 
 for pred_len in 96 192 336 720
 do   
@@ -28,7 +28,7 @@ do
     --enc_in 21 \
     --rank $rank \
     --train_epochs 100 \
-    --patience 20 \
+    --patience 6 \
     --itr 1 --batch_size 32 --learning_rate 0.01
 done
 done

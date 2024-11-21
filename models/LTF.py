@@ -144,6 +144,6 @@ class Model(nn.Module):
         return out.permute(0,2,1) # [Batch, Output length, Channel]
 
 
-    def step(self, lr):
-        self.layer_lo.step(lr)
-        pass
+    # def step(self):
+    #     self.layer_lo.step()
+        
