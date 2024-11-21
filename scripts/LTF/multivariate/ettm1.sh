@@ -9,7 +9,7 @@ data_path_name=ETTm1.csv
 model_id_name=ETTm1
 data_name=ETTm1
 
-rank=8
+rank=16
 
 for seq_len in 512 336
 do

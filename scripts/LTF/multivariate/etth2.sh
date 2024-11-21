@@ -11,7 +11,7 @@ data_path_name=ETTh2.csv
 model_id_name=ETTh2
 data_name=ETTh2
 
-rank=8
+rank=16
 
 for seq_len in 512 336
 do

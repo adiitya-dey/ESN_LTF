@@ -9,7 +9,7 @@ data_path_name=weather.csv
 model_id_name=weather
 data_name=custom
 
-rank=8
+rank=16
 
 for seq_len in 512 336
 do
