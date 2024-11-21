@@ -11,12 +11,12 @@ data_path_name=ETTh2.csv
 model_id_name=ETTh2
 data_name=ETTh2
 
-rank=16
+rank=32
 
-for seq_len in 512 336
-do
 for pred_len in 96 192 336 720
-do    
+do   
+for seq_len in 336 512
+do 
     python -u run_longExp.py \
       --is_training 1 \
       --root_path $root_path_name \
@@ -30,7 +30,7 @@ do
       --enc_in 7 \
       --train_epochs 100 \
       --rank $rank \
-      --patience 20 \
+      --patience 10 \
       --itr 1 --batch_size 32 --learning_rate 0.01
 done
 done
