@@ -93,7 +93,7 @@ if __name__ == '__main__':
 
     Exp = Exp_Main
 
-    if args.is_training:
+    if args.is_training==1:
         for ii in range(args.itr):
             # setting record of experiments
             setting = '{}_{}_{}_ft{}_sl{}_ll{}_pl{}_n1{}_n2{}_dr{}_cin{}_rin{}_res{}_dst{}_dconv{}_efact{}'.format(
@@ -126,7 +126,7 @@ if __name__ == '__main__':
                 exp.predict(setting, True)
 
             torch.cuda.empty_cache()
-    else:
+    elif args.is_training==0:
         ii = 0
         setting = '{}_{}_{}_ft{}_sl{}_ll{}_pl{}_n1{}_n2{}_dr{}_cin{}_rin{}_res{}_dst{}_dconv{}_efact'.format(
                 args.model_id,
@@ -151,3 +151,26 @@ if __name__ == '__main__':
         exp.test(setting, test=1)
         torch.cuda.empty_cache()
         
+    else:
+        ii = 0
+        setting = '{}_{}_{}_ft{}_sl{}_ll{}_pl{}_n1{}_n2{}_dr{}_cin{}_rin{}_res{}_dst{}_dconv{}_efact'.format(
+                args.model_id,
+                args.model,
+                args.model_id_name,
+                args.features,
+                args.seq_len,
+                args.label_len,
+                args.pred_len,
+                args.n1,
+                args.n2,
+                args.dropout,
+                args.ch_ind,
+                args.revin,
+                args.residual,
+                args.d_state,
+                args.dconv,
+                args.e_fact)
+
+        exp = Exp(args)  # set experiments
+        print('>>>>>>>testing : {}<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<'.format(setting))
+        exp.calc_params(setting)
