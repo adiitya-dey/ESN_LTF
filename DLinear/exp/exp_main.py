@@ -15,6 +15,8 @@ import time
 import warnings
 import matplotlib.pyplot as plt
 import numpy as np
+from fvcore.nn import parameter_count
+
 
 warnings.filterwarnings('ignore')
 
@@ -348,3 +350,16 @@ class Exp_Main(Exp_Basic):
         np.save(folder_path + 'real_prediction.npy', preds)
 
         return
+
+    def calc_params(self, setting):
+        # Calculate the number of trainable  parameters
+        
+        # macs = FlopCountAnalysis(self.model, (self.args.batch_size, self.args.seq_len, self.args.enc_in))
+        params = parameter_count(self.model)
+        f = open("parameters.txt", 'a')
+        f.write(setting + "  \n")
+        f.write(f"Total Parameters: {params['']}")
+        # f.write(f"Total Macs: {macs}")
+        f.write('\n')
+        f.write('\n')
+        f.close()
