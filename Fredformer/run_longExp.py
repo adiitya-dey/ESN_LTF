@@ -136,7 +136,7 @@ print(args)
 
 Exp = Exp_Main
 
-if args.is_training:
+if args.is_training==0:
     for ii in range(args.itr):
         # setting record of experiments
         setting = '{}_{}_{}_cf_dim{}_cf_depth{}_cf_heads{}_cf_mlp{}_cf_head_dim{}_{}'.format(
@@ -163,7 +163,7 @@ if args.is_training:
             #exp.predict(setting, True)
 
         torch.cuda.empty_cache()
-else:
+elif args.is_training==0:
     ii = 0
     setting = '{}_{}_{}_ft{}_sl{}_ll{}_pl{}_dm{}_nh{}_el{}_dl{}_df{}_fc{}_eb{}_dt{}_{}_{}'.format(args.model_id,
                                                                                                   args.model,
@@ -187,4 +187,28 @@ else:
     print('>>>>>>>testing : {}<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<'.format(setting))
     exp.test(setting, test=1)
     torch.cuda.empty_cache()
+
+else:
+    ii = 0
+    setting = '{}_{}_{}_ft{}_sl{}_ll{}_pl{}_dm{}_nh{}_el{}_dl{}_df{}_fc{}_eb{}_dt{}_{}_{}'.format(args.model_id,
+                                                                                                  args.model,
+                                                                                                  args.data,
+                                                                                                  args.features,
+                                                                                                  args.seq_len,
+                                                                                                  args.label_len,
+                                                                                                  args.pred_len,
+                                                                                                  args.d_model,
+                                                                                                  args.n_heads,
+                                                                                                  args.e_layers,
+                                                                                                  args.d_layers,
+                                                                                                  args.d_ff,
+                                                                                                  args.factor,
+                                                                                                  args.embed,
+                                                                                                  args.distil,
+                                                                                                  args.train_epochs,
+                                                                                                  args.des, ii)
+
+    exp = Exp(args)  # set experiments
+    print('>>>>>>>testing : {}<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<'.format(setting))
+    exp.calc_params(setting)
 

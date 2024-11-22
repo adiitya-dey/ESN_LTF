@@ -176,7 +176,7 @@ class Exp_Main(Exp_Basic):
                 f_dim = -1 if self.args.features == 'MS' else 0
                 outputs = outputs[:, -self.args.pred_len:, f_dim:]
                 batch_y = batch_y[:, -self.args.pred_len:, f_dim:].to(self.device)
-                loss = criterion(outputs, batch_y)
+                loss = criterion(outputs, batch_y) + 0.1 * torch.mean(torch.abs(outputs))
                 train_loss.append(loss.item())
 
                 if (i + 1) % 100 == 0:
@@ -330,7 +330,7 @@ class Exp_Main(Exp_Basic):
     def calc_params(self, setting):
         # Calculate the number of trainable  parameters
         
-        macs = FlopCountAnalysis(self.model, (self.args.batch_size, self.args.seq_len, self.args.enc_in))
+        # macs = FlopCountAnalysis(self.model, (self.args.batch_size, self.args.seq_len, self.args.enc_in))
         params = parameter_count(self.model)
         f = open("parameters.txt", 'a')
         f.write(setting + "  \n")

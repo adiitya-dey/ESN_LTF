@@ -18,7 +18,7 @@ do
 for seq_len in 336 512
 do
     python -u run_longExp.py \
-      --is_training 2 \
+      --is_training 1 \
       --root_path $root_path_name \
       --data_path $data_path_name \
       --model_id $model_id_name'_'$seq_len'_'$pred_len \
