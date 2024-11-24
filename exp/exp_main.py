@@ -298,7 +298,7 @@ class Exp_Main(Exp_Basic):
             # test_params_flop((batch_x.shape[1], batch_x.shape[2]))
             exit()
 
-        # fix bug
+        # fixed bug
         preds = np.concatenate(preds, axis=0)
         trues = np.concatenate(trues, axis=0)
         inputx = np.concatenate(inputx, axis=0)
