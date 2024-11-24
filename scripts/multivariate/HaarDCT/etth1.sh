@@ -2,7 +2,7 @@ if [ ! -d "./logs" ]; then
     mkdir ./logs
 fi
 
-model_name=LTF
+model_name=HaarDCT
 
 root_path_name=./dataset/
 data_path_name=ETTh1.csv

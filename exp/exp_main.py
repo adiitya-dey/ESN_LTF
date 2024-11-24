@@ -1,6 +1,6 @@
 from data_provider.data_factory import data_provider
 from exp.exp_basic import Exp_Basic
-from models import LTF
+from models import HaarDCT
 from utils.tools import EarlyStopping, adjust_learning_rate, visual, test_params_flop
 from utils.metrics import metric
 
@@ -29,7 +29,7 @@ class Exp_Main(Exp_Basic):
 
     def _build_model(self):
         model_dict = {
-            'LTF': LTF,
+            'HaarDCT': HaarDCT,
         }
         model = model_dict[self.args.model].Model(self.args).float()
 
@@ -193,13 +193,13 @@ class Exp_Main(Exp_Basic):
                 #     scaler.update()
                 # else:
                 loss.backward()
-                # model_optim.step()
+                model_optim.step()
 
                 # Use this for mylow rank.
                 # self.model.step()
 
                 # Use this for Jonas's Low Rank.
-                self.model.step(self.args.learning_rate)
+                # self.model.step(self.args.learning_rate)
 
                 if self.args.lradj == 'TST':
                     adjust_learning_rate(model_optim, scheduler, epoch + 1, self.args, printout=False)

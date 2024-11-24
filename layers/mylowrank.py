@@ -1,7 +1,40 @@
 import torch
 import torch.nn as nn
-from torch import autograd
 import math
+
+
+class LowRank(nn.Module):
+    def __init__(self, in_features, out_features, rank, bias=True):
+        super(LowRank, self).__init__()
+        self.in_features = in_features
+        self.out_features = out_features
+        self.rank= rank
+        self.bias = bias
+
+        wA = torch.empty(self.in_features, rank)
+        wB = torch.empty(self.rank, self.out_features)
+
+        self.A = nn.Parameter(nn.init.kaiming_uniform_(wA))
+        self.B = nn.Parameter(nn.init.kaiming_uniform_(wB))
+
+        if self.bias:
+            wb = torch.empty(self.out_features)
+            self.b = nn.Parameter(nn.init.uniform_(wb))
+
+    def forward(self, x):
+        out = x @ self.A
+        out = out @ self.B
+
+        if self.bias:
+            out += self.b
+
+        return out
+
+
+
+
+
+
 
 
 #######################################
@@ -153,4 +186,5 @@ class ThinLinear(nn.Module):
         #     self.U.data, R1 = torch.linalg.qr(self.U.data)
         #     self.V.data, R2 = torch.linalg.qr(self.V.data)
         #     self.S.data = R1 @ self.S.data @ R2.T
+
 
