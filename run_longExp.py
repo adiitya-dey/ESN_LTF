@@ -50,7 +50,9 @@ parser.add_argument('--subtract_last', type=int, default=0, help='0: subtract me
 parser.add_argument('--decomposition', type=int, default=0, help='decomposition; True 1 False 0')
 parser.add_argument('--kernel_size', type=int, default=25, help='decomposition-kernel')
 
-
+# SparseTSF
+parser.add_argument('--period_len', type=int, default=24, help='period length')
+parser.add_argument('--model_type', default='linear', help='model type: linear/mlp')
 
 # Formers 
 parser.add_argument('--embed_type', type=int, default=0, help='0: default 1: value embedding + temporal embedding + positional embedding 2: value embedding + temporal embedding 3: value embedding + positional embedding 4: value embedding')
@@ -131,6 +133,7 @@ if args.is_training:
             args.d_ff,
             args.factor,
             args.embed,
+            args.model_type,
             args.distil,
             args.des, ii)
 
