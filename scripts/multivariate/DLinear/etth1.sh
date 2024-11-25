@@ -16,7 +16,7 @@ for pred_len in 96 192 336 720
 do    
     python -u run_longExp.py \
       --is_training 1 \
-      --individual \
+      --individual 1 \
       --root_path $root_path_name \
       --data_path $data_path_name \
       --model_id $model_id_name'_'$seq_len'_'$pred_len \
