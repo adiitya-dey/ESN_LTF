@@ -1,6 +1,6 @@
 from data_provider.data_factory import data_provider
 from exp.exp_basic import Exp_Basic
-from models import HaarDCT
+from models import HaarDCT, DLinear, NLinear
 from utils.tools import EarlyStopping, adjust_learning_rate, visual, test_params_flop
 from utils.metrics import metric
 
@@ -17,11 +17,9 @@ import warnings
 import matplotlib.pyplot as plt
 import numpy as np
 
-from fvcore.nn import FlopCountAnalysis
-from fvcore.nn import parameter_count
+from thop import profile
 
 warnings.filterwarnings('ignore')
-
 
 class Exp_Main(Exp_Basic):
     def __init__(self, args):
@@ -30,6 +28,8 @@ class Exp_Main(Exp_Basic):
     def _build_model(self):
         model_dict = {
             'HaarDCT': HaarDCT,
+            'DLinear': DLinear,
+            'NLinear': NLinear,
         }
         model = model_dict[self.args.model].Model(self.args).float()
 
@@ -66,30 +66,30 @@ class Exp_Main(Exp_Basic):
                 batch_x = batch_x.float().to(self.device)
                 batch_y = batch_y.float()
 
-                # batch_x_mark = batch_x_mark.float().to(self.device)
-                # batch_y_mark = batch_y_mark.float().to(self.device)
+                batch_x_mark = batch_x_mark.float().to(self.device)
+                batch_y_mark = batch_y_mark.float().to(self.device)
 
-                # # decoder input
-                # dec_inp = torch.zeros_like(batch_y[:, -self.args.pred_len:, :]).float()
-                # dec_inp = torch.cat([batch_y[:, :self.args.label_len, :], dec_inp], dim=1).float().to(self.device)
-                # # encoder - decoder
-                # if self.args.use_amp:
-                #     with torch.cuda.amp.autocast():
-                #         if any(substr in self.args.model for substr in {'LTF'}):
-                outputs = self.model(batch_x)
-                #         else:
-                #             if self.args.output_attention:
-                #                 outputs = self.model(batch_x, batch_x_mark, dec_inp, batch_y_mark)[0]
-                #             else:
-                #                 outputs = self.model(batch_x, batch_x_mark, dec_inp, batch_y_mark)
-                # else:
-                #     if any(substr in self.args.model for substr in {'LTF'}):
-                #         outputs = self.model(batch_x)
-                #     else:
-                #         if self.args.output_attention:
-                #             outputs = self.model(batch_x, batch_x_mark, dec_inp, batch_y_mark)[0]
-                #         else:
-                #             outputs = self.model(batch_x, batch_x_mark, dec_inp, batch_y_mark)
+                # decoder input
+                dec_inp = torch.zeros_like(batch_y[:, -self.args.pred_len:, :]).float()
+                dec_inp = torch.cat([batch_y[:, :self.args.label_len, :], dec_inp], dim=1).float().to(self.device)
+                # encoder - decoder
+                if self.args.use_amp:
+                    with torch.cuda.amp.autocast():
+                        if self.args.model in ('HaarDCT', 'DLinear', 'NLinear'):
+                            outputs = self.model(batch_x)
+                        else:
+                            if self.args.output_attention:
+                                outputs = self.model(batch_x, batch_x_mark, dec_inp, batch_y_mark)[0]
+                            else:
+                                outputs = self.model(batch_x, batch_x_mark, dec_inp, batch_y_mark)
+                else:
+                    if self.args.model in ('HaarDCT', 'DLinear', 'NLinear'):
+                        outputs = self.model(batch_x)
+                    else:
+                        if self.args.output_attention:
+                            outputs = self.model(batch_x, batch_x_mark, dec_inp, batch_y_mark)[0]
+                        else:
+                            outputs = self.model(batch_x, batch_x_mark, dec_inp, batch_y_mark)
                 f_dim = -1 if self.args.features == 'MS' else 0
                 outputs = outputs[:, -self.args.pred_len:, f_dim:]
                 batch_y = batch_y[:, -self.args.pred_len:, f_dim:].to(self.device)
@@ -121,8 +121,8 @@ class Exp_Main(Exp_Basic):
         model_optim = self._select_optimizer()
         criterion = self._select_criterion()
 
-        # if self.args.use_amp:
-        #     scaler = torch.cuda.amp.GradScaler()
+        if self.args.use_amp:
+            scaler = torch.cuda.amp.GradScaler()
 
         scheduler = lr_scheduler.OneCycleLR(optimizer=model_optim,
                                             steps_per_epoch=train_steps,
@@ -140,44 +140,47 @@ class Exp_Main(Exp_Basic):
                 model_optim.zero_grad()
                 batch_x = batch_x.float().to(self.device)
                 batch_y = batch_y.float().to(self.device)
-                # batch_x_mark = batch_x_mark.float().to(self.device)
-                # batch_y_mark = batch_y_mark.float().to(self.device)
+                batch_x_mark = batch_x_mark.float().to(self.device)
+                batch_y_mark = batch_y_mark.float().to(self.device)
 
-                # # decoder input
-                # dec_inp = torch.zeros_like(batch_y[:, -self.args.pred_len:, :]).float()
-                # dec_inp = torch.cat([batch_y[:, :self.args.label_len, :], dec_inp], dim=1).float().to(self.device)
+                # decoder input
+                dec_inp = torch.zeros_like(batch_y[:, -self.args.pred_len:, :]).float()
+                dec_inp = torch.cat([batch_y[:, :self.args.label_len, :], dec_inp], dim=1).float().to(self.device)
 
-                # # encoder - decoder
-                # if self.args.use_amp:
-                #     with torch.cuda.amp.autocast():
-                #         if any(substr in self.args.model for substr in {'LTF'}):
-                #             outputs = self.model(batch_x)
-                #         else:
-                #             if self.args.output_attention:
-                #                 outputs = self.model(batch_x, batch_x_mark, dec_inp, batch_y_mark)[0]
-                #             else:
-                #                 outputs = self.model(batch_x, batch_x_mark, dec_inp, batch_y_mark)
+                # encoder - decoder
+                if self.args.use_amp:
+                    with torch.cuda.amp.autocast():
+                        if self.args.model in ('HaarDCT', 'DLinear', 'NLinear'):
+                            outputs = self.model(batch_x)
+                        else:
+                            if self.args.output_attention:
+                                outputs = self.model(batch_x, batch_x_mark, dec_inp, batch_y_mark)[0]
+                            else:
+                                outputs = self.model(batch_x, batch_x_mark, dec_inp, batch_y_mark)
 
-                #         f_dim = -1 if self.args.features == 'MS' else 0
-                #         outputs = outputs[:, -self.args.pred_len:, f_dim:]
-                #         batch_y = batch_y[:, -self.args.pred_len:, f_dim:].to(self.device)
-                #         loss = criterion(outputs, batch_y)
-                #         train_loss.append(loss.item())
-                # else:
-                    # if any(substr in self.args.model for substr in {'LTF'}):
-                outputs = self.model(batch_x)
-                    # else:
-                    #     if self.args.output_attention:
-                    #         outputs = self.model(batch_x, batch_x_mark, dec_inp, batch_y_mark)[0]
-
-                    #     else:
-                    #         outputs = self.model(batch_x, batch_x_mark, dec_inp, batch_y_mark, batch_y)
+                        f_dim = -1 if self.args.features == 'MS' else 0
+                        outputs = outputs[:, -self.args.pred_len:, f_dim:]
+                        batch_y = batch_y[:, -self.args.pred_len:, f_dim:].to(self.device)
+                        loss = criterion(outputs, batch_y)
+                        train_loss.append(loss.item())
+                else:
+                    if self.args.model in ('HaarDCT', 'DLinear', 'NLinear'):
+                        outputs = self.model(batch_x)
+                    else:
+                        if self.args.output_attention:
+                            outputs = self.model(batch_x, batch_x_mark, dec_inp, batch_y_mark)[0]
+                        else:
+                            outputs = self.model(batch_x, batch_x_mark, dec_inp, batch_y_mark, batch_y)
                     # print(outputs.shape,batch_y.shape)
-                f_dim = -1 if self.args.features == 'MS' else 0
-                outputs = outputs[:, -self.args.pred_len:, f_dim:]
-                batch_y = batch_y[:, -self.args.pred_len:, f_dim:].to(self.device)
-                loss = criterion(outputs, batch_y)
-                train_loss.append(loss.item())
+                    f_dim = -1 if self.args.features == 'MS' else 0
+                    outputs = outputs[:, -self.args.pred_len:, f_dim:]
+                    batch_y = batch_y[:, -self.args.pred_len:, f_dim:].to(self.device)
+                    
+                    if self.args.model in ('HaarDCT'):
+                        loss = criterion(outputs, batch_y) + 0.1 * torch.mean(torch.abs(outputs))
+                    else:
+                        loss = criterion(outputs, batch_y)
+                    train_loss.append(loss.item())
 
                 if (i + 1) % 100 == 0:
                     print("\titers: {0}, epoch: {1} | loss: {2:.7f}".format(i + 1, epoch + 1, loss.item()))
@@ -187,19 +190,13 @@ class Exp_Main(Exp_Basic):
                     iter_count = 0
                     time_now = time.time()
 
-                # if self.args.use_amp:
-                #     scaler.scale(loss).backward()
-                #     scaler.step(model_optim)
-                #     scaler.update()
-                # else:
-                loss.backward()
-                model_optim.step()
-
-                # Use this for mylow rank.
-                # self.model.step()
-
-                # Use this for Jonas's Low Rank.
-                # self.model.step(self.args.learning_rate)
+                if self.args.use_amp:
+                    scaler.scale(loss).backward()
+                    scaler.step(model_optim)
+                    scaler.update()
+                else:
+                    loss.backward()
+                    model_optim.step()
 
                 if self.args.lradj == 'TST':
                     adjust_learning_rate(model_optim, scheduler, epoch + 1, self.args, printout=False)
@@ -248,31 +245,31 @@ class Exp_Main(Exp_Basic):
                 batch_x = batch_x.float().to(self.device)
                 batch_y = batch_y.float().to(self.device)
 
-                # batch_x_mark = batch_x_mark.float().to(self.device)
-                # batch_y_mark = batch_y_mark.float().to(self.device)
+                batch_x_mark = batch_x_mark.float().to(self.device)
+                batch_y_mark = batch_y_mark.float().to(self.device)
 
-                # # decoder input
-                # dec_inp = torch.zeros_like(batch_y[:, -self.args.pred_len:, :]).float()
-                # dec_inp = torch.cat([batch_y[:, :self.args.label_len, :], dec_inp], dim=1).float().to(self.device)
-                # # encoder - decoder
-                # if self.args.use_amp:
-                #     with torch.cuda.amp.autocast():
-                #         if any(substr in self.args.model for substr in {'LTF'}):
-                outputs = self.model(batch_x)
-                #         else:
-                #             if self.args.output_attention:
-                #                 outputs = self.model(batch_x, batch_x_mark, dec_inp, batch_y_mark)[0]
-                #             else:
-                #                 outputs = self.model(batch_x, batch_x_mark, dec_inp, batch_y_mark)
-                # else:
-                #     if any(substr in self.args.model for substr in {'LTF'}):
-                #         outputs = self.model(batch_x)
-                #     else:
-                #         if self.args.output_attention:
-                #             outputs = self.model(batch_x, batch_x_mark, dec_inp, batch_y_mark)[0]
+                # decoder input
+                dec_inp = torch.zeros_like(batch_y[:, -self.args.pred_len:, :]).float()
+                dec_inp = torch.cat([batch_y[:, :self.args.label_len, :], dec_inp], dim=1).float().to(self.device)
+                # encoder - decoder
+                if self.args.use_amp:
+                    with torch.cuda.amp.autocast():
+                        if self.args.model in ('HaarDCT', 'DLinear', 'NLinear'):
+                            outputs = self.model(batch_x)
+                        else:
+                            if self.args.output_attention:
+                                outputs = self.model(batch_x, batch_x_mark, dec_inp, batch_y_mark)[0]
+                            else:
+                                outputs = self.model(batch_x, batch_x_mark, dec_inp, batch_y_mark)
+                else:
+                    if self.args.model in ('HaarDCT', 'DLinear', 'NLinear'):
+                        outputs = self.model(batch_x)
+                    else:
+                        if self.args.output_attention:
+                            outputs = self.model(batch_x, batch_x_mark, dec_inp, batch_y_mark)[0]
 
-                #         else:
-                #             outputs = self.model(batch_x, batch_x_mark, dec_inp, batch_y_mark)
+                        else:
+                            outputs = self.model(batch_x, batch_x_mark, dec_inp, batch_y_mark)
 
                 f_dim = -1 if self.args.features == 'MS' else 0
                 # print(outputs.shape,batch_y.shape)
@@ -312,31 +309,90 @@ class Exp_Main(Exp_Basic):
         if not os.path.exists(folder_path):
             os.makedirs(folder_path)
 
-        mae, mse = metric(preds, trues)
-        print('mse:{}, mae:{}'.format(mse, mae))
+        mae, mse, rmse, mape, mspe, rse, corr = metric(preds, trues)
+        profile_input = torch.randn(self.args.batch_size, self.args.seq_len, self.args.enc_in)
+        macs, params = profile(self.model, inputs=(profile_input,))
+        print('mse:{}, mae:{}, rse:{}'.format(mse, mae, rse))
+        print(f"MACS:{macs}, Params: {params}")
         f = open("result.txt", 'a')
         f.write(setting + "  \n")
-        f.write('mse:{}, mae:{} '.format(mse, mae))
-        if self.args.test_flop:
-            f.write(' macs{}, params{}'.format(macs, params))
+        f.write('mse:{}, mae:{}, rse:{}'.format(mse, mae, rse))
+        f.write(f"\n MACS:{macs}, Params: {params}")
         f.write('\n')
         f.write('\n')
         f.close()
 
+        # np.save(folder_path + 'metrics.npy', np.array([mae, mse, rmse, mape, mspe,rse, corr]))
+        np.save(folder_path + 'pred.npy', preds)
+        # np.save(folder_path + 'true.npy', trues)
+        # np.save(folder_path + 'x.npy', inputx)
         return
 
 
     
-    def calc_params(self, setting):
-        # Calculate the number of trainable  parameters
+    # def calc_params(self, setting):
+    #     # Calculate the number of trainable  parameters
         
-        macs = FlopCountAnalysis(self.model, (self.args.batch_size, self.args.seq_len, self.args.enc_in))
-        params = parameter_count(self.model)
-        f = open("parameters.txt", 'a')
-        f.write(setting + "  \n")
-        f.write(f"Total Parameters: {params['']}")
-        f.write(f"Total Macs: {macs}")
-        f.write('\n')
-        f.write('\n')
-        f.close()
+    #     macs = FlopCountAnalysis(self.model, (self.args.batch_size, self.args.seq_len, self.args.enc_in))
+    #     params = parameter_count(self.model)
+    #     f = open("parameters.txt", 'a')
+    #     f.write(setting + "  \n")
+    #     f.write(f"Total Parameters: {params['']}")
+    #     f.write(f"Total Macs: {macs}")
+    #     f.write('\n')
+    #     f.write('\n')
+    #     f.close()
 
+def predict(self, setting, load=False):
+        pred_data, pred_loader = self._get_data(flag='pred')
+
+        if load:
+            path = os.path.join(self.args.checkpoints, setting)
+            best_model_path = path + '/' + 'checkpoint.pth'
+            self.model.load_state_dict(torch.load(best_model_path))
+
+        preds = []
+
+        self.model.eval()
+        with torch.no_grad():
+            for i, (batch_x, batch_y, batch_x_mark, batch_y_mark) in enumerate(pred_loader):
+                batch_x = batch_x.float().to(self.device)
+                batch_y = batch_y.float()
+                batch_x_mark = batch_x_mark.float().to(self.device)
+                batch_y_mark = batch_y_mark.float().to(self.device)
+
+                # decoder input
+                dec_inp = torch.zeros([batch_y.shape[0], self.args.pred_len, batch_y.shape[2]]).float().to(batch_y.device)
+                dec_inp = torch.cat([batch_y[:, :self.args.label_len, :], dec_inp], dim=1).float().to(self.device)
+                # encoder - decoder
+                if self.args.use_amp:
+                    with torch.cuda.amp.autocast():
+                        if 'DLinear' in self.args.model:
+                            outputs = self.model(batch_x)
+                        else:
+                            if self.args.output_attention:
+                                outputs = self.model(batch_x, batch_x_mark, dec_inp, batch_y_mark)[0]
+                            else:
+                                outputs = self.model(batch_x, batch_x_mark, dec_inp, batch_y_mark)
+                else:
+                    if 'DLinear' in self.args.model:
+                        outputs = self.model(batch_x)
+                    else:
+                        if self.args.output_attention:
+                            outputs = self.model(batch_x, batch_x_mark, dec_inp, batch_y_mark)[0]
+                        else:
+                            outputs = self.model(batch_x, batch_x_mark, dec_inp, batch_y_mark)
+                pred = outputs.detach().cpu().numpy()  # .squeeze()
+                preds.append(pred)
+
+        preds = np.array(preds)
+        preds = preds.reshape(-1, preds.shape[-2], preds.shape[-1])
+
+        # result save
+        folder_path = './results/' + setting + '/'
+        if not os.path.exists(folder_path):
+            os.makedirs(folder_path)
+
+        np.save(folder_path + 'real_prediction.npy', preds)
+
+        return

@@ -36,6 +36,7 @@ class Model(nn.Module):
              output = torch.zeros([x.size(0),x.size(1),self.pred_len],dtype=x.dtype).to(x.device)
              for i in range(self.channels):
                 output[:,i,:] = self.Linear[i](x[:,i,:])
+            
         else:
             x = self.Linear(x)
 

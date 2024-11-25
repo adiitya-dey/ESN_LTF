@@ -1,3 +1,4 @@
+from re import X
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
@@ -37,7 +38,7 @@ class series_decomp(nn.Module):
 
 class Model(nn.Module):
     """
-    Decomposition-Linear
+    DLinear
     """
     def __init__(self, configs):
         super(Model, self).__init__()
@@ -53,21 +54,20 @@ class Model(nn.Module):
         if self.individual:
             self.Linear_Seasonal = nn.ModuleList()
             self.Linear_Trend = nn.ModuleList()
+            self.Linear_Decoder = nn.ModuleList()
             
             for i in range(self.channels):
                 self.Linear_Seasonal.append(nn.Linear(self.seq_len,self.pred_len))
+                self.Linear_Seasonal[i].weight = nn.Parameter((1/self.seq_len)*torch.ones([self.pred_len,self.seq_len]))
                 self.Linear_Trend.append(nn.Linear(self.seq_len,self.pred_len))
-
-                # Use this two lines if you want to visualize the weights
-                # self.Linear_Seasonal[i].weight = nn.Parameter((1/self.seq_len)*torch.ones([self.pred_len,self.seq_len]))
-                # self.Linear_Trend[i].weight = nn.Parameter((1/self.seq_len)*torch.ones([self.pred_len,self.seq_len]))
+                self.Linear_Trend[i].weight = nn.Parameter((1/self.seq_len)*torch.ones([self.pred_len,self.seq_len]))
+                self.Linear_Decoder.append(nn.Linear(self.seq_len,self.pred_len))
         else:
             self.Linear_Seasonal = nn.Linear(self.seq_len,self.pred_len)
             self.Linear_Trend = nn.Linear(self.seq_len,self.pred_len)
-            
-            # Use this two lines if you want to visualize the weights
-            # self.Linear_Seasonal.weight = nn.Parameter((1/self.seq_len)*torch.ones([self.pred_len,self.seq_len]))
-            # self.Linear_Trend.weight = nn.Parameter((1/self.seq_len)*torch.ones([self.pred_len,self.seq_len]))
+            self.Linear_Decoder = nn.Linear(self.seq_len,self.pred_len)
+            self.Linear_Seasonal.weight = nn.Parameter((1/self.seq_len)*torch.ones([self.pred_len,self.seq_len]))
+            self.Linear_Trend.weight = nn.Parameter((1/self.seq_len)*torch.ones([self.pred_len,self.seq_len]))
 
     def forward(self, x):
         # x: [Batch, Input length, Channel]
