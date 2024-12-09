@@ -54,6 +54,14 @@ parser.add_argument('--kernel_size', type=int, default=25, help='decomposition-k
 parser.add_argument('--period_len', type=int, default=24, help='period length')
 parser.add_argument('--model_type', default='linear', help='model type: linear/mlp')
 
+#TSMixer
+parser.add_argument("--norm_type", type=str, default="batch", help="Norm can be batch or layer")
+parser.add_argument("--ff_dim", type=int, default=64)
+parser.add_argument("--normalize_before", type=bool, default=True)
+parser.add_argument("--num_blocks", type=int, default=2)
+
+
+
 # Formers 
 parser.add_argument('--embed_type', type=int, default=0, help='0: default 1: value embedding + temporal embedding + positional embedding 2: value embedding + temporal embedding 3: value embedding + positional embedding 4: value embedding')
 parser.add_argument('--enc_in', type=int, default=7, help='encoder input size') # DLinear with --individual, use this hyperparameter as the number of channels
