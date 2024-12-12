@@ -5,9 +5,9 @@ fi
 model_name=FreTS
 
 root_path_name=./dataset/
-data_path_name=ETTh1.csv
-model_id_name=ETTh1
-data_name=ETTh1
+data_path_name=weather.csv
+model_id_name=weather
+data_name=custom
 
 for seq_len in 512 336
 do
@@ -24,7 +24,7 @@ do
       --features M \
       --seq_len $seq_len \
       --pred_len $pred_len \
-      --enc_in 7 \
+      --enc_in 21 \
       --train_epochs 100 \
       --patience 20 \
       --des 'Exp' \
