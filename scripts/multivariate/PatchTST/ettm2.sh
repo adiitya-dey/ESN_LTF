@@ -5,9 +5,9 @@ fi
 model_name=PatchTST
 
 root_path_name=./dataset/
-data_path_name=ETTh1.csv
-model_id_name=ETTh1
-data_name=ETTh1
+data_path_name=ETTm2.csv
+model_id_name=ETTm2
+data_name=ETTm2
 
 for seq_len in 512 336
 do
