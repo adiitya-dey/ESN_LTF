@@ -45,9 +45,8 @@ class Model(nn.Module):
 
         ## Jonas's Low Rank
         ## Ensure to switch-off Adam Optimizer in "exp_main" train function.
-        self.layer_lo = LowRank(in_features=in_len,
+        self.layer_lo = nn.Linear(in_features=in_len,
                                 out_features=self.pred_len,
-                                rank=self.rank,
                                 bias=True)
 
 

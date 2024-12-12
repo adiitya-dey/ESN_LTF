@@ -18,15 +18,15 @@ class Model(nn.Module):
 
         self.channels = configs.enc_in
 
-        self.low_pass_filter = torch.tensor([1, 1], dtype=torch.float32) / math.sqrt(2)
+        # self.low_pass_filter = torch.tensor([1, 1], dtype=torch.float32) / math.sqrt(2)
 
-        self.low_pass_filter = self.low_pass_filter.reshape(1,1,-1).repeat(self.channels, 1, 1)
+        # self.low_pass_filter = self.low_pass_filter.reshape(1,1,-1).repeat(self.channels, 1, 1)
 
 
-        if (self.seq_len%2)!=0:
-            in_len = self.seq_len//2 + 1
-        else:
-            in_len = self.seq_len//2
+        # if (self.seq_len%2)!=0:
+        #     in_len = self.seq_len//2 + 1
+        # else:
+        #     in_len = self.seq_len//2
 
 
         ## Full Linear Layer
@@ -45,7 +45,7 @@ class Model(nn.Module):
 
         ## Jonas's Low Rank
         ## Ensure to switch-off Adam Optimizer in "exp_main" train function.
-        self.layer_lo = LowRank(in_features=in_len,
+        self.layer_lo = LowRank(in_features=self.seq_len,
                                 out_features=self.pred_len,
                                 rank=self.rank,
                                 bias=True)
@@ -62,10 +62,10 @@ class Model(nn.Module):
         x = x - seq_mean
         
         ## Haar decomposition
-        if self.seq_len%2 != 0:
-            x = F.pad(x, (0,1))
+        # if self.seq_len%2 != 0:
+        #     x = F.pad(x, (0,1))
 
-        x = F.conv1d(input=x, weight=self.low_pass_filter, stride=2, groups=self.channels)
+        # x = F.conv1d(input=x, weight=self.low_pass_filter, stride=2, groups=self.channels)
 
         ##Cosine Transform
         x = DCT.apply(x) / x.shape[-1]

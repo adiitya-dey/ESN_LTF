@@ -2,17 +2,16 @@ if [ ! -d "./logs" ]; then
     mkdir ./logs
 fi
 
-model_name=HaarDCT
+rank=40
+seq_len=512
+
 
 root_path_name=./dataset/
 data_path_name=ETTh1.csv
 model_id_name=ETTh1
 data_name=ETTh1
 
-
-rank=40
-
-for seq_len in 48 96 192 336 512 720
+for model_name in woDCT HaarDCT
 do
 for pred_len in 96 192 336 720
 do    
@@ -40,8 +39,7 @@ data_path_name=ETTh2.csv
 model_id_name=ETTh2
 data_name=ETTh2
 
-
-for seq_len in 48 96 192 336 512 720
+for model_name in woDCT HaarDCT
 do
 for pred_len in 96 192 336 720
 do    

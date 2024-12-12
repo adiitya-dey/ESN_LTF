@@ -38,6 +38,11 @@ parser.add_argument('--individual', type=int, default=0, help='individual head; 
 # Haar-DCT
 parser.add_argument('--rank', type=int, default=50, help='period length')
 
+# Abalation for Haar DCT
+parser.add_argument('--noise_train', type=int, default = 0, help='Testing robustness to noise, True 1 False 0')
+parser.add_argument('--noise_test', type=int, default = 0, help='Testing robustness to noise, True 1 False 0')
+parser.add_argument('--noise_std', type=float, default=0.1, help="Adjust standard deviation of the noise.")
+
 # PatchTST
 parser.add_argument('--fc_dropout', type=float, default=0.05, help='fully connected dropout')
 parser.add_argument('--head_dropout', type=float, default=0.0, help='head dropout')

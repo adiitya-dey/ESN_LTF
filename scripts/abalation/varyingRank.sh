@@ -2,6 +2,8 @@ if [ ! -d "./logs" ]; then
     mkdir ./logs
 fi
 
+
+seq_len=512
 model_name=HaarDCT
 
 root_path_name=./dataset/
@@ -9,10 +11,7 @@ data_path_name=ETTh1.csv
 model_id_name=ETTh1
 data_name=ETTh1
 
-
-rank=40
-
-for seq_len in 48 96 192 336 512 720
+for rank in 15 35 55 75
 do
 for pred_len in 96 192 336 720
 do    
@@ -27,7 +26,7 @@ do
       --seq_len $seq_len \
       --pred_len $pred_len \
       --enc_in 7 \
-      --train_epochs 100 \
+      --train_epochs 1 \
       --rank $rank \
       --patience 20 \
       --des 'Exp' \
@@ -40,8 +39,7 @@ data_path_name=ETTh2.csv
 model_id_name=ETTh2
 data_name=ETTh2
 
-
-for seq_len in 48 96 192 336 512 720
+for rank in 15 35 55 75
 do
 for pred_len in 96 192 336 720
 do    
