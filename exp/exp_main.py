@@ -18,7 +18,7 @@ import warnings
 import matplotlib.pyplot as plt
 import numpy as np
 
-from thop import profile
+from fvcore.nn import FlopCountAnalysis, parameter_count_table
 
 warnings.filterwarnings('ignore')
 
@@ -316,13 +316,14 @@ class Exp_Main(Exp_Basic):
 
         mae, mse, rmse, mape, mspe, rse, corr = metric(preds, trues)
         profile_input = torch.randn(self.args.batch_size, self.args.seq_len, self.args.enc_in)
-        macs, params = profile(self.model, inputs=(profile_input,))
+        flops = FlopCountAnalysis(self.model, profile_input).total()
+        params = sum(p.numel() for p in self.model.parameters())
         print('mse:{}, mae:{}, rse:{}'.format(mse, mae, rse))
-        print(f"MACS:{macs}, Params: {params}")
+        print(f"MACS:{flops}, Params: {params}")
         f = open("result.txt", 'a')
         f.write(setting + "  \n")
         f.write('mse:{}, mae:{}, rse:{}'.format(mse, mae, rse))
-        f.write(f"\n MACS:{macs}, Params: {params}")
+        f.write(f"\n MACS:{flops}, Params: {params} ")
         f.write('\n')
         f.write('\n')
         f.close()
