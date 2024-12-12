@@ -2,12 +2,14 @@ if [ ! -d "./logs" ]; then
     mkdir ./logs
 fi
 
-model_name=LTF
+model_name=HaarDCT
 
 root_path_name=./dataset/
 data_path_name=weather.csv
 model_id_name=weather
 data_name=custom
+
+rank=50
 
 for seq_len in 512 336
 do
@@ -24,6 +26,7 @@ do
     --seq_len $seq_len \
     --pred_len $pred_len \
     --enc_in 21 \
+    --rank $rank \
     --train_epochs 100 \
     --patience 20 \
     --itr 1 --batch_size 32 --learning_rate 0.01

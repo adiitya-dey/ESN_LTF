@@ -2,14 +2,18 @@ if [ ! -d "./logs" ]; then
     mkdir ./logs
 fi
 
-model_name=LTF
+model_name=HaarDCT
 
 root_path_name=./dataset/
 data_path_name=electricity.csv
 model_id_name=Electricity
 data_name=custom
 
-seq_len=336
+
+rank=50
+
+for seq_len in 512 336
+do
 for pred_len in 96 192 336 720
 do
   python -u run_longExp.py \
@@ -23,7 +27,9 @@ do
     --seq_len $seq_len \
     --pred_len $pred_len \
     --enc_in 321 \
-    --train_epochs 50 \
-    --patience 6 \
+    --rank $rank \
+    --train_epochs 100 \
+    --patience 20 \
     --itr 1 --batch_size 32 --learning_rate 0.01
+done
 done
