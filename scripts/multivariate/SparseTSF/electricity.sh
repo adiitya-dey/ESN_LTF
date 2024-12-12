@@ -5,9 +5,9 @@ fi
 model_name=SparseTSF
 
 root_path_name=./dataset/
-data_path_name=ETTh1.csv
-model_id_name=ETTh1
-data_name=ETTh1
+data_path_name=electricity.csv
+model_id_name=Electricity
+data_name=custom
 
 for seq_len in 512 336
 do
@@ -25,7 +25,7 @@ do
       --seq_len $seq_len \
       --pred_len $pred_len \
       --period_len 16 \
-      --enc_in 7 \
+      --enc_in 321 \
       --train_epochs 100 \
       --patience 20 \
       --des 'Exp' \
