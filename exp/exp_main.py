@@ -315,7 +315,7 @@ class Exp_Main(Exp_Basic):
             os.makedirs(folder_path)
 
         mae, mse, rmse, mape, mspe, rse, corr = metric(preds, trues)
-        profile_input = torch.randn(self.args.batch_size, self.args.seq_len, self.args.enc_in)
+        profile_input = torch.randn(self.args.batch_size, self.args.seq_len, self.args.enc_in).to(self.device)
         flops = FlopCountAnalysis(self.model, profile_input).total()
         params = sum(p.numel() for p in self.model.parameters())
         print('mse:{}, mae:{}, rse:{}'.format(mse, mae, rse))

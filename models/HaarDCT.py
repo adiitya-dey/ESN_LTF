@@ -65,6 +65,8 @@ class Model(nn.Module):
         if self.seq_len%2 != 0:
             x = F.pad(x, (0,1))
 
+        self.low_pass_filter = self.low_pass_filter.to(x.device)
+
         x = F.conv1d(input=x, weight=self.low_pass_filter, stride=2, groups=self.channels)
 
         ##Cosine Transform
