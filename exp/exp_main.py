@@ -1,6 +1,6 @@
 from data_provider.data_factory import data_provider
 from exp.exp_basic import Exp_Basic
-from models import HaarDCT, DLinear, NLinear, PatchTST, FreTS, SparseTSF, TSMixer
+from models import HaarDCT, DLinear, NLinear, PatchTST, FreTS, SparseTSF, TSMixer, iTransformer
 from utils.tools import EarlyStopping, adjust_learning_rate, visual, test_params_flop
 from utils.metrics import metric
 
@@ -35,6 +35,7 @@ class Exp_Main(Exp_Basic):
             'FreTS': FreTS,
             'SparseTSF': SparseTSF,
             'TSMixer': TSMixer,
+            'iTransformer': iTransformer,
         }
         model = model_dict[self.args.model].Model(self.args).float()
 
@@ -69,10 +70,13 @@ class Exp_Main(Exp_Basic):
         with torch.no_grad():
             for i, (batch_x, batch_y, batch_x_mark, batch_y_mark) in enumerate(vali_loader):
                 batch_x = batch_x.float().to(self.device)
-                batch_y = batch_y.float()
-
-                batch_x_mark = batch_x_mark.float().to(self.device)
-                batch_y_mark = batch_y_mark.float().to(self.device)
+                batch_y = batch_y.float().to(self.device)
+                if 'PEMS' in self.args.data or 'Solar' in self.args.data:
+                    batch_x_mark = None
+                    batch_y_mark = None
+                else:
+                    batch_x_mark = batch_x_mark.float().to(self.device)
+                    batch_y_mark = batch_y_mark.float().to(self.device)
 
                 # decoder input
                 dec_inp = torch.zeros_like(batch_y[:, -self.args.pred_len:, :]).float()
@@ -145,8 +149,13 @@ class Exp_Main(Exp_Basic):
                 model_optim.zero_grad()
                 batch_x = batch_x.float().to(self.device)
                 batch_y = batch_y.float().to(self.device)
-                batch_x_mark = batch_x_mark.float().to(self.device)
-                batch_y_mark = batch_y_mark.float().to(self.device)
+                if 'PEMS' in self.args.data or 'Solar' in self.args.data:
+                    batch_x_mark = None
+                    batch_y_mark = None
+                else:
+                    batch_x_mark = batch_x_mark.float().to(self.device)
+                    batch_y_mark = batch_y_mark.float().to(self.device)
+
 
                 # decoder input
                 dec_inp = torch.zeros_like(batch_y[:, -self.args.pred_len:, :]).float()
@@ -175,7 +184,7 @@ class Exp_Main(Exp_Basic):
                         if self.args.output_attention:
                             outputs = self.model(batch_x, batch_x_mark, dec_inp, batch_y_mark)[0]
                         else:
-                            outputs = self.model(batch_x, batch_x_mark, dec_inp, batch_y_mark, batch_y)
+                            outputs = self.model(batch_x, batch_x_mark, dec_inp, batch_y_mark)
                     # print(outputs.shape,batch_y.shape)
                     f_dim = -1 if self.args.features == 'MS' else 0
                     outputs = outputs[:, -self.args.pred_len:, f_dim:]
@@ -244,18 +253,35 @@ class Exp_Main(Exp_Basic):
         if not os.path.exists(folder_path):
             os.makedirs(folder_path)
 
+        ## Inputs for FlopCounts for fvncore
+        profile_x = None
+        profile_x_mark = None
+        profile_y_mark = None
+        profile_dec_inp = None
+
         self.model.eval()
         with torch.no_grad():
             for i, (batch_x, batch_y, batch_x_mark, batch_y_mark) in enumerate(test_loader):
                 batch_x = batch_x.float().to(self.device)
                 batch_y = batch_y.float().to(self.device)
-
-                batch_x_mark = batch_x_mark.float().to(self.device)
-                batch_y_mark = batch_y_mark.float().to(self.device)
+                if 'PEMS' in self.args.data or 'Solar' in self.args.data:
+                    batch_x_mark = None
+                    batch_y_mark = None
+                else:
+                    batch_x_mark = batch_x_mark.float().to(self.device)
+                    batch_y_mark = batch_y_mark.float().to(self.device)
 
                 # decoder input
                 dec_inp = torch.zeros_like(batch_y[:, -self.args.pred_len:, :]).float()
                 dec_inp = torch.cat([batch_y[:, :self.args.label_len, :], dec_inp], dim=1).float().to(self.device)
+
+                ## Creating profiles for Fvncore
+                if i==0:
+                    profile_x = torch.randn(batch_x.shape).to(self.device)
+                    profile_x_mark = torch.randn(batch_x_mark.shape).to(self.device)
+                    profile_y_mark = torch.randn(batch_y_mark.shape).to(self.device)
+                    profile_dec_inp = torch.randn(dec_inp.shape).to(self.device)
+
                 # encoder - decoder
                 if self.args.use_amp:
                     with torch.cuda.amp.autocast():
@@ -282,7 +308,10 @@ class Exp_Main(Exp_Basic):
                 batch_y = batch_y[:, -self.args.pred_len:, f_dim:].to(self.device)
                 outputs = outputs.detach().cpu().numpy()
                 batch_y = batch_y.detach().cpu().numpy()
-
+                if test_data.scale and self.args.inverse:
+                    shape = outputs.shape
+                    outputs = test_data.inverse_transform(outputs.squeeze(0)).reshape(shape)
+                    batch_y = test_data.inverse_transform(batch_y.squeeze(0)).reshape(shape)
                 pred = outputs  # outputs.detach().cpu().numpy()  # .squeeze()
                 true = batch_y  # batch_y.detach().cpu().numpy()  # .squeeze()
 
@@ -291,6 +320,9 @@ class Exp_Main(Exp_Basic):
                 inputx.append(batch_x.detach().cpu().numpy())
                 if i % 20 == 0:
                     input = batch_x.detach().cpu().numpy()
+                    if test_data.scale and self.args.inverse:
+                        shape = input.shape
+                        input = test_data.inverse_transform(input.squeeze(0)).reshape(shape)
                     gt = np.concatenate((input[0, :, -1], true[0, :, -1]), axis=0)
                     pd = np.concatenate((input[0, :, -1], pred[0, :, -1]), axis=0)
                     visual(gt, pd, os.path.join(folder_path, str(i) + '.pdf'))
@@ -315,8 +347,11 @@ class Exp_Main(Exp_Basic):
             os.makedirs(folder_path)
 
         mae, mse, rmse, mape, mspe, rse, corr = metric(preds, trues)
-        profile_input = torch.randn(self.args.batch_size, self.args.seq_len, self.args.enc_in).to(self.device)
-        flops = FlopCountAnalysis(self.model, profile_input).total()
+        if self.args.model in ("iTransformer"):
+            flops = FlopCountAnalysis(self.model, inputs=(profile_x, profile_x_mark, profile_dec_inp, profile_y_mark)).total()
+        else:
+            flops = FlopCountAnalysis(self.model, profile_x).total()
+
         params = sum(p.numel() for p in self.model.parameters())
         print('mse:{}, mae:{}, rse:{}'.format(mse, mae, rse))
         print(f"MACS:{flops}, Params: {params}")
@@ -330,7 +365,7 @@ class Exp_Main(Exp_Basic):
 
         # np.save(folder_path + 'metrics.npy', np.array([mae, mse, rmse, mape, mspe,rse, corr]))
         np.save(folder_path + 'pred.npy', preds)
-        # np.save(folder_path + 'true.npy', trues)
+        np.save(folder_path + 'true.npy', trues)
         # np.save(folder_path + 'x.npy', inputx)
         return
 
@@ -363,7 +398,7 @@ def predict(self, setting, load=False):
         with torch.no_grad():
             for i, (batch_x, batch_y, batch_x_mark, batch_y_mark) in enumerate(pred_loader):
                 batch_x = batch_x.float().to(self.device)
-                batch_y = batch_y.float()
+                batch_y = batch_y.float().to(self.device)
                 batch_x_mark = batch_x_mark.float().to(self.device)
                 batch_y_mark = batch_y_mark.float().to(self.device)
 

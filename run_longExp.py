@@ -61,6 +61,19 @@ parser.add_argument("--normalize_before", type=bool, default=True)
 parser.add_argument("--num_blocks", type=int, default=2)
 
 
+# iTransformer
+parser.add_argument('--exp_name', type=str, required=False, default='MTSF',
+                    help='experiemnt name, options:[MTSF, partial_train]')
+parser.add_argument('--channel_independence', type=bool, default=False, help='whether to use channel_independence mechanism')
+parser.add_argument('--inverse', action='store_true', help='inverse output data', default=False)
+parser.add_argument('--class_strategy', type=str, default='projection', help='projection/average/cls_token')
+parser.add_argument('--target_root_path', type=str, default='./data/electricity/', help='root path of the data file')
+parser.add_argument('--target_data_path', type=str, default='electricity.csv', help='data file')
+parser.add_argument('--efficient_training', type=bool, default=False, help='whether to use efficient_training (exp_name should be partial train)') # See Figure 8 of our paper for the detail
+parser.add_argument('--use_norm', type=int, default=True, help='use norm and denorm')
+parser.add_argument('--partial_start_index', type=int, default=0, help='the start index of variates for partial training, '
+                                                                           'you can select [partial_start_index, min(enc_in + partial_start_index, N)]')
+
 
 # Formers 
 parser.add_argument('--embed_type', type=int, default=0, help='0: default 1: value embedding + temporal embedding + positional embedding 2: value embedding + temporal embedding 3: value embedding + positional embedding 4: value embedding')
@@ -143,7 +156,8 @@ if args.is_training:
             args.embed,
             args.model_type,
             args.distil,
-            args.des, ii)
+            args.des,
+            args.class_strategy, ii)
 
         exp = Exp(args)  # set experiments
         print('>>>>>>>start training : {}>>>>>>>>>>>>>>>>>>>>>>>>>>'.format(setting))
@@ -175,7 +189,8 @@ else:
                                                                                                   args.factor,
                                                                                                   args.embed,
                                                                                                   args.distil,
-                                                                                                  args.des, ii)
+                                                                                                  args.des,
+                                                                                                  args.class_strategy, ii)
 
     exp = Exp(args)  # set experiments
     print('>>>>>>>testing : {}<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<'.format(setting))
