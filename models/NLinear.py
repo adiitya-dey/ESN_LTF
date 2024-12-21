@@ -27,7 +27,7 @@ class Model(nn.Module):
 
     def forward(self, x):
         # x: [Batch, Input length, Channel]
-        seq_last = x[:,-1:,:].detach()
+        seq_last = x[:,-1:,:].detach().to(x.device)
         x = x - seq_last
 
         x = x.permute(0,2,1)
