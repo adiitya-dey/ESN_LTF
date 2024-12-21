@@ -12,7 +12,7 @@ data_name=custom
 
 rank=50
 
-for seq_len in 512 336
+for seq_len in 512
 do
 for pred_len in 96 192 336 720
 do
@@ -23,7 +23,7 @@ do
     --model_id $model_id_name'_'$seq_len'_'$pred_len \
     --model $model_name \
     --data $data_name \
-    --features M \
+    --features M --train_type Linear \
     --seq_len $seq_len \
     --pred_len $pred_len \
     --enc_in 321 \

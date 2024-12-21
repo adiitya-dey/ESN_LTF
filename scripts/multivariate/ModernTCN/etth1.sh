@@ -2,7 +2,7 @@ if [ ! -d "./logs" ]; then
     mkdir ./logs
 fi
 
-model_name=iTransformer
+model_name=ModernTCN
 
 root_path_name=./dataset/
 data_path_name=ETTh1.csv
@@ -13,13 +13,6 @@ for seq_len in 512
 do
 for pred_len in 96 192 336 720
 do    
-    if [ $pred_len -eq 96 ] || [ $pred_len -eq 192 ]; then
-      d_model=256
-      d_ff=256
-    else
-      d_model=512
-      d_ff=512
-    fi
     python -u run_longExp.py \
       --is_training 1 \
       --root_path $root_path_name \
@@ -30,17 +23,23 @@ do
       --features M \
       --seq_len $seq_len \
       --pred_len $pred_len \
-      --train_type nonlinear \
-      --e_layers 2 \
       --enc_in 7 \
-      --dec_in 7 \
-      --c_out 7 \
-      --d_model $d_model \
-      --d_ff $d_ff \
       --train_epochs 1 \
       --patience 20 \
+      --train_type TCN \
+      --ffn_ratio 1 \
+      --patch_size 8 \
+      --patch_stride 4 \
+      --num_blocks 1 \
+      --large_size 51 \
+      --small_size 5 \
+      --dims 64 64 64 64 \
+      --head_dropout 0.0 \
+      --dropout 0.3 \
+      --lradj type3 \
+      --use_multi_scale False \
+      --small_kernel_merged False \
       --des 'Exp' \
       --itr 1 --batch_size 32 --learning_rate 0.0001
 done
 done
-

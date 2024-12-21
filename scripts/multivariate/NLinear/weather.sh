@@ -9,7 +9,7 @@ data_path_name=weather.csv
 model_id_name=weather
 data_name=custom
 
-for seq_len in 512 336
+for seq_len in 512
 do
 for pred_len in 96 192 336 720
 do    

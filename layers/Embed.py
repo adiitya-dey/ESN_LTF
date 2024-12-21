@@ -180,3 +180,16 @@ class DataEmbedding_inverted(nn.Module):
             x = self.value_embedding(torch.cat([x, x_mark.permute(0, 2, 1)], 1)) 
         # x: [Batch Variate d_model]
         return self.dropout(x)
+    
+
+class WITRAN_Temporal_Embedding(nn.Module):
+    def __init__(self, d_inp, d_model, embed_type='fixed', freq='h', dropout=0.1):
+        super(WITRAN_Temporal_Embedding, self).__init__()
+
+        self.temporal_embedding = TemporalEmbedding(d_model=d_model, embed_type=embed_type,
+                                                    freq=freq) if embed_type != 'timeF' \
+            else nn.Linear(d_inp, d_model, bias=False)
+        self.dropout = nn.Dropout(p=dropout)
+
+    def forward(self, x_mark):
+        return self.dropout(self.temporal_embedding(x_mark))

@@ -4,6 +4,7 @@ import torch
 from exp.exp_main import Exp_Main
 import random
 import numpy as np
+from utils.str2bool import str2bool
 
 fix_seed = 2021
 random.seed(fix_seed)
@@ -15,6 +16,7 @@ parser = argparse.ArgumentParser(description='HaarDCT & other models for Time Se
 parser.add_argument('--is_training', type=int, required=True, default=1, help='status')
 parser.add_argument('--model_id', type=str, required=True, default='test', help='model id')
 parser.add_argument('--model', type=str, required=True, default='HaarDCT', help='model name')
+parser.add_argument('--train_type', type=str, required=True, default="Linear", help="the method to calculate output: 1. Linear, 2. TCN")
 
 # data loader
 parser.add_argument('--data', type=str, required=True, default='ETTm1', help='dataset type')
@@ -55,10 +57,10 @@ parser.add_argument('--period_len', type=int, default=24, help='period length')
 parser.add_argument('--model_type', default='linear', help='model type: linear/mlp')
 
 #TSMixer
-parser.add_argument("--norm_type", type=str, default="batch", help="Norm can be batch or layer")
-parser.add_argument("--ff_dim", type=int, default=64)
-parser.add_argument("--normalize_before", type=bool, default=True)
-parser.add_argument("--num_blocks", type=int, default=2)
+# parser.add_argument("--norm_type", type=str, default="batch", help="Norm can be batch or layer")
+# parser.add_argument("--ff_dim", type=int, default=64)
+# parser.add_argument("--normalize_before", type=bool, default=True)
+# parser.add_argument("--num_blocks_tsmixer", type=int, default=2)
 
 
 # iTransformer
@@ -73,6 +75,35 @@ parser.add_argument('--efficient_training', type=bool, default=False, help='whet
 parser.add_argument('--use_norm', type=int, default=True, help='use norm and denorm')
 parser.add_argument('--partial_start_index', type=int, default=0, help='the start index of variates for partial training, '
                                                                            'you can select [partial_start_index, min(enc_in + partial_start_index, N)]')
+#FRNet
+parser.add_argument('--pred_head_type', type=str, default='linear', help='linear or truncation')
+parser.add_argument('--aggregation_type', type=str, default='linear', help='linear or avg')
+parser.add_argument('--channel_attention', type=int, default=0, help='True 1 or False 0')
+parser.add_argument('--global_freq_pred', type=int, default=1, help='True 1 or False 0')
+parser.add_argument('--period_list', type=int, nargs='+', default=1, help='period_list') 
+parser.add_argument('--emb', type=int, default=64, help='patch embedding size')
+
+
+#ModernTCN
+parser.add_argument('--stem_ratio', type=int, default=6, help='stem ratio')
+parser.add_argument('--downsample_ratio', type=int, default=2, help='downsample_ratio')
+parser.add_argument('--ffn_ratio', type=int, default=2, help='ffn_ratio')
+parser.add_argument('--patch_size', type=int, default=16, help='the patch size')
+parser.add_argument('--patch_stride', type=int, default=8, help='the patch stride')
+parser.add_argument('--num_blocks', nargs='+',type=int, default=[1,1,1,1], help='num_blocks in each stage')
+parser.add_argument('--large_size', nargs='+',type=int, default=[31,29,27,13], help='big kernel size')
+parser.add_argument('--small_size', nargs='+',type=int, default=[5,5,5,5], help='small kernel size for structral reparam')
+parser.add_argument('--dims', nargs='+',type=int, default=[256,256,256,256], help='dmodels in each stage')
+parser.add_argument('--dw_dims', nargs='+',type=int, default=[256,256,256,256])
+parser.add_argument('--small_kernel_merged', type=str2bool, default=False, help='small_kernel has already merged or not')
+parser.add_argument('--call_structural_reparam', type=bool, default=False, help='structural_reparam after training')
+parser.add_argument('--use_multi_scale', type=str2bool, default=True, help='use_multi_scale fusion')
+
+# For WITRAN
+parser.add_argument('--WITRAN_deal', type=str, default='None', 
+    help='WITRAN deal data type, options:[None, standard]')
+parser.add_argument('--WITRAN_grid_cols', type=int, default=24, 
+    help='Numbers of data grid cols for WITRAN')
 
 
 # Formers 

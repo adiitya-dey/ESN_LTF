@@ -1,6 +1,6 @@
 from data_provider.data_factory import data_provider
 from exp.exp_basic import Exp_Basic
-from models import HaarDCT, DLinear, NLinear, PatchTST, FreTS, SparseTSF, TSMixer, iTransformer
+from models import HaarDCT, DLinear, ModernTCN, NLinear, PatchTST, FreTS, SparseTSF, TSMixer, iTransformer, FrNet, WITRAN
 from utils.tools import EarlyStopping, adjust_learning_rate, visual, test_params_flop
 from utils.metrics import metric
 
@@ -36,6 +36,10 @@ class Exp_Main(Exp_Basic):
             'SparseTSF': SparseTSF,
             'TSMixer': TSMixer,
             'iTransformer': iTransformer,
+            'ModernTCN': ModernTCN,
+            'FrNet': FrNet,
+            'WITRAN': WITRAN
+
         }
         model = model_dict[self.args.model].Model(self.args).float()
 
@@ -84,16 +88,20 @@ class Exp_Main(Exp_Basic):
                 # encoder - decoder
                 if self.args.use_amp:
                     with torch.cuda.amp.autocast():
-                        if self.args.model in ('HaarDCT', 'DLinear', 'NLinear', 'PatchTST', 'FreTS', 'SparseTSF', 'TSMixer'):
+                        if self.args.train_type.lower()=="linear":
                             outputs = self.model(batch_x)
+                        elif self.args.train_type.lower()=="tcn":
+                            outputs = self.model(batch_x, batch_x_mark)
                         else:
                             if self.args.output_attention:
                                 outputs = self.model(batch_x, batch_x_mark, dec_inp, batch_y_mark)[0]
                             else:
                                 outputs = self.model(batch_x, batch_x_mark, dec_inp, batch_y_mark)
                 else:
-                    if self.args.model in ('HaarDCT', 'DLinear', 'NLinear', 'PatchTST', 'FreTS', 'SparseTSF', 'TSMixer'):
-                        outputs = self.model(batch_x)
+                    if self.args.train_type.lower()=="linear":
+                            outputs = self.model(batch_x)
+                    elif self.args.train_type.lower()=="tcn":
+                            outputs = self.model(batch_x, batch_x_mark)
                     else:
                         if self.args.output_attention:
                             outputs = self.model(batch_x, batch_x_mark, dec_inp, batch_y_mark)[0]
@@ -164,8 +172,10 @@ class Exp_Main(Exp_Basic):
                 # encoder - decoder
                 if self.args.use_amp:
                     with torch.cuda.amp.autocast():
-                        if self.args.model in ('HaarDCT', 'DLinear', 'NLinear', 'PatchTST', 'FreTS', 'SparseTSF', 'TSMixer'):
+                        if self.args.train_type.lower()=="linear":
                             outputs = self.model(batch_x)
+                        elif self.args.train_type.lower()=="tcn":
+                            outputs = self.model(batch_x, batch_x_mark)
                         else:
                             if self.args.output_attention:
                                 outputs = self.model(batch_x, batch_x_mark, dec_inp, batch_y_mark)[0]
@@ -178,8 +188,11 @@ class Exp_Main(Exp_Basic):
                         loss = criterion(outputs, batch_y)
                         train_loss.append(loss.item())
                 else:
-                    if self.args.model in ('HaarDCT', 'DLinear', 'NLinear', 'PatchTST', 'FreTS', 'SparseTSF', 'TSMixer'):
+                    if self.args.train_type.lower()=="linear":
                         outputs = self.model(batch_x)
+                    elif self.args.train_type.lower()=="tcn":
+                        outputs = self.model(batch_x, batch_x_mark)
+                        # outputs = self.model(batch_x)   #if decide not to use time stamp, use this code
                     else:
                         if self.args.output_attention:
                             outputs = self.model(batch_x, batch_x_mark, dec_inp, batch_y_mark)[0]
@@ -260,6 +273,8 @@ class Exp_Main(Exp_Basic):
         profile_dec_inp = None
 
         self.model.eval()
+        if self.args.call_structural_reparam and hasattr(self.model, 'structural_reparam'):
+            self.model.structural_reparam()
         with torch.no_grad():
             for i, (batch_x, batch_y, batch_x_mark, batch_y_mark) in enumerate(test_loader):
                 batch_x = batch_x.float().to(self.device)
@@ -285,16 +300,20 @@ class Exp_Main(Exp_Basic):
                 # encoder - decoder
                 if self.args.use_amp:
                     with torch.cuda.amp.autocast():
-                        if self.args.model in ('HaarDCT', 'DLinear', 'NLinear', 'PatchTST', 'FreTS', 'SparseTSF', 'TSMixer'):
+                        if self.args.train_type.lower()=="linear":
                             outputs = self.model(batch_x)
+                        elif self.args.train_type.lower()=="tcn":
+                            outputs = self.model(batch_x, batch_x_mark)
                         else:
                             if self.args.output_attention:
                                 outputs = self.model(batch_x, batch_x_mark, dec_inp, batch_y_mark)[0]
                             else:
                                 outputs = self.model(batch_x, batch_x_mark, dec_inp, batch_y_mark)
                 else:
-                    if self.args.model in ('HaarDCT', 'DLinear', 'NLinear', 'PatchTST', 'FreTS', 'SparseTSF', 'TSMixer'):
+                    if self.args.train_type.lower()=="linear":
                         outputs = self.model(batch_x)
+                    elif self.args.train_type.lower()=="tcn":
+                        outputs = self.model(batch_x, batch_x_mark)
                     else:
                         if self.args.output_attention:
                             outputs = self.model(batch_x, batch_x_mark, dec_inp, batch_y_mark)[0]
