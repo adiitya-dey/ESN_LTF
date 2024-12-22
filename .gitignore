@@ -174,3 +174,7 @@ parameters.txt
 results/
 
 .vscode/
+
+run_temp.py
+exp/exp_temp.py
+experiment.py
